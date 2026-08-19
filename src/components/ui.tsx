@@ -341,7 +341,14 @@ export function Field({
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>
         {label}
-        {required ? '' : ` (${t('optional')})`}
+        {/*
+         * Required fields are marked; optional ones are left plain.
+         *
+         * The opposite convention — tagging everything optional — put "(optional)" on almost
+         * every label in the app, including the document number, which reads as though the user
+         * has a choice to make when it is assigned for them.
+         */}
+        {required ? <Text style={styles.fieldRequired}> *</Text> : null}
       </Text>
       {children}
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
@@ -910,6 +917,7 @@ const styles = StyleSheet.create({
   field: { gap: spacing.xs },
   fieldLabel: { fontSize: fontSize.small, fontWeight: fontWeight.medium, color: palette.inkMuted },
   fieldHint: { fontSize: fontSize.caption, color: palette.inkMuted },
+  fieldRequired: { color: palette.danger, fontWeight: fontWeight.semibold },
   fieldError: { fontSize: fontSize.caption, color: palette.danger },
   input: {
     minHeight: TOUCH_TARGET,

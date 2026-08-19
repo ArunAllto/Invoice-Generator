@@ -68,6 +68,37 @@ npx expo run:android
 
 ---
 
+## Review the screens on a desktop
+
+The UI can be driven in a normal browser, which is the quickest way to look at every screen
+without waiting for a build. It needs **two terminals**, because the database will not work
+without the second one:
+
+```bash
+npm run web
+```
+
+```bash
+npm run web:proxy
+```
+
+Then open **http://localhost:8099** — the proxy's port, not 8095.
+
+The proxy exists for one reason: `expo-sqlite`'s browser build runs wa-sqlite in a worker that
+needs `SharedArrayBuffer`, which browsers only expose to a cross-origin-isolated document. Expo
+serves its HTML shell outside Metro's middleware, so the headers have to be added in front of
+it. Open 8095 directly and you get a working-looking app whose first write hangs for ever.
+
+What works in the browser: every screen, navigation, the database, the editor with live totals,
+the catalogue and client pickers, the A4 document preview (an iframe showing the same HTML the
+PDF is made from), and signature drawing on a canvas. Not available: PDF, DOCX and image
+export, camera and gallery pickers, and the share sheet — all of those are native.
+
+**The browser is a review aid, not the product.** Android is the target, and §14's acceptance
+tests have to pass on a physical device.
+
+---
+
 ## Run the tests
 
 ```bash

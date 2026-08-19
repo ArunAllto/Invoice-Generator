@@ -35,7 +35,6 @@ const en = {
   clear: 'Clear',
   remove: 'Remove',
   replace: 'Replace',
-  optional: 'optional',
   none: 'None',
   all: 'All',
   copyDetails: 'Copy details',

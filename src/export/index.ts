@@ -11,7 +11,6 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
-import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 
 import { t } from '../strings';
@@ -23,6 +22,32 @@ import { exportImages, type ImageFormat } from './image';
 import { exportPdf, printDocument, type GeneratedFile } from './pdf';
 
 export type ExportFormat = 'pdf' | 'docx' | 'image';
+
+/**
+ * Media library, resolved on first use rather than at import.
+ *
+ * Saving an image to the gallery is the only thing that needs it, but a static import made it
+ * a load-time requirement of this whole module — which every export path goes through. A
+ * runtime without the native module (a web browser, Expo Go for some modules) then failed to
+ * evaluate the module at all, taking PDF and DOCX export down with it.
+ */
+interface MediaLibraryModule {
+  requestPermissionsAsync: () => Promise<{ granted: boolean }>;
+  createAssetAsync: (uri: string) => Promise<{ filename: string }>;
+}
+
+let cachedMediaLibrary: MediaLibraryModule | null | undefined;
+
+function resolveMediaLibrary(): MediaLibraryModule | null {
+  if (cachedMediaLibrary !== undefined) return cachedMediaLibrary;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- deliberate soft dependency
+    cachedMediaLibrary = require('expo-media-library') as MediaLibraryModule;
+  } catch {
+    cachedMediaLibrary = null;
+  }
+  return cachedMediaLibrary;
+}
 
 export interface ExportRequest {
   input: RenderInput;
@@ -213,13 +238,20 @@ export async function saveExportToDownloads(request: ExportRequest): Promise<Sav
   const isImage = request.format === 'image';
 
   if (isImage) {
-    const permission = await MediaLibrary.requestPermissionsAsync();
+    const mediaLibrary = resolveMediaLibrary();
+    if (!mediaLibrary) {
+      throw new ExportError(
+        'Saving an image to the gallery is not available in this runtime.',
+        new Error('expo-media-library is unavailable'),
+      );
+    }
+    const permission = await mediaLibrary.requestPermissionsAsync();
     if (!permission.granted) {
       throw new ExportError(t('permissionDenied'), new Error('Media library permission denied'));
     }
     const saved: string[] = [];
     for (const file of files) {
-      const asset = await MediaLibrary.createAssetAsync(file.uri);
+      const asset = await mediaLibrary.createAssetAsync(file.uri);
       saved.push(asset.filename);
     }
     return { savedFiles: saved, location: 'media-library' };

@@ -9,8 +9,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { WebView } from 'react-native-webview';
 
+import { HtmlView } from '../../../src/components/HtmlView';
 import {
   Button,
   Caption,
@@ -79,17 +79,8 @@ export default function PreviewScreen(): React.ReactElement {
   return (
     <Screen scroll={false} contentStyle={styles.container}>
       <View style={styles.webviewWrapper}>
-        <WebView
-          originWhitelist={['*']}
-          source={{ html }}
-          style={styles.webview}
-          // §11 privacy: nothing in a document should ever need script or the network.
-          javaScriptEnabled={false}
-          // The HTML lays itself out at A4; let the WebView scale it to the phone's width.
-          scalesPageToFit
-          setBuiltInZoomControls
-          showsHorizontalScrollIndicator={false}
-        />
+        {/* The HTML lays itself out at A4; the viewer scales it to the screen width. */}
+        <HtmlView html={html} style={styles.webview} scaleToFit />
       </View>
       <View style={styles.footer}>
         <Caption>

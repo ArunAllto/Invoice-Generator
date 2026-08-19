@@ -83,6 +83,10 @@
         "projectId": "0a6f4644-5c74-4abd-975d-f7c5eb610148"
       }
     },
-    "owner": "tejayajets-team"
+    "owner": "tejayajets-team",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
   }
 }

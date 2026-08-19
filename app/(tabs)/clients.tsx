@@ -4,9 +4,9 @@
 
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 
+import { DataList } from '../../src/components/DataList';
 import {
   Button,
   Caption,
@@ -67,8 +67,9 @@ export default function ClientsScreen(): React.ReactElement {
           action={<Button label={t('clientAddNew')} onPress={() => router.push('/client/new')} />}
         />
       ) : (
-        <FlashList
+        <DataList
           data={clients}
+          estimatedItemSize={80}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

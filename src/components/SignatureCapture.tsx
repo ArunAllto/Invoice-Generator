@@ -15,13 +15,13 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import SignatureScreen from 'react-native-signature-canvas';
 
 import { BackgroundRemover } from '../media/BackgroundRemover';
 import { deleteStoredImage, describeImageProblem, pickLogo, storeBase64Png } from '../media/images';
 import { toDataUri } from '../render/prepare';
 import { t } from '../strings';
 import { palette, radius, spacing } from '../theme';
+import { SignaturePad } from './SignaturePad';
 import { Slider } from './Slider';
 import {
   Body,
@@ -269,20 +269,10 @@ export function SignatureCapture({
 
           {method === 'draw' ? (
             <View>
-              <Caption>{t('signatureDrawHint')}</Caption>
-              <View style={styles.canvasWrapper}>
-                <SignatureScreen
-                  onOK={(signature) => void handleDrawn(signature)}
-                  onEmpty={() => setError('Draw your signature first.')}
-                  descriptionText=""
-                  clearText={t('signatureClear')}
-                  confirmText={t('done')}
-                  penColor="#000000"
-                  backgroundColor="#FFFFFF"
-                  imageType="image/png"
-                  webStyle={SIGNATURE_WEB_STYLE}
-                />
-              </View>
+              <SignaturePad
+                onDone={(signature) => void handleDrawn(signature)}
+                onEmpty={() => setError('Draw your signature first.')}
+              />
               <Caption>
                 Draw, then tap {t('done')} to trim it and remove the background.
               </Caption>
@@ -303,29 +293,6 @@ export function SignatureCapture({
     </View>
   );
 }
-
-/**
- * Styling for the signature canvas's own web view.
- *
- * The library renders an HTML canvas, so its chrome is styled with CSS rather than RN
- * props. The buttons are given a real height so they meet §11's 44dp minimum.
- */
-const SIGNATURE_WEB_STYLE = `
-  .m-signature-pad { box-shadow: none; border: none; margin: 0; }
-  .m-signature-pad--body { border: 1px solid ${palette.border}; border-radius: 8px; }
-  .m-signature-pad--footer { margin: 8px 0 0; }
-  .m-signature-pad--footer .button {
-    background-color: ${palette.navy};
-    color: #FFFFFF;
-    border-radius: 8px;
-    min-height: 44px;
-    padding: 0 16px;
-    font-size: 15px;
-  }
-  .m-signature-pad--footer .button.clear { background-color: ${palette.surfaceSunken}; color: ${palette.ink}; }
-  .m-signature-pad--footer .description { display: none; }
-  body, html { margin: 0; padding: 0; background: transparent; }
-`;
 
 const styles = StyleSheet.create({
   container: { gap: spacing.md },

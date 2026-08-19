@@ -20,9 +20,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { captureRef } from 'react-native-view-shot';
-import { WebView } from 'react-native-webview';
 
+import { HtmlView } from '../components/HtmlView';
 import { countPages, renderDocumentHtml, type RenderInput } from '../render/html';
 import { buildExportFilename, MIME_TYPES, type FilenameParts } from './filename';
 import type { GeneratedFile } from './pdf';
@@ -45,6 +44,38 @@ interface HostHandle {
 }
 
 const hostRef: { current: HostHandle | null } = { current: null };
+
+/**
+ * Resolve `captureRef` on first use rather than at import time.
+ *
+ * `ImageExportHost` is mounted at the app root, so a static import would make the native
+ * module a startup requirement for the whole app. Resolving it here means a runtime without it
+ * — Expo Go, which ships a fixed set of native modules — loses image export and nothing else,
+ * instead of failing to launch.
+ */
+type CaptureRef = (
+  ref: unknown,
+  options: Record<string, unknown>,
+) => Promise<string>;
+
+let cachedCaptureRef: CaptureRef | null | undefined;
+
+function resolveCaptureRef(): CaptureRef | null {
+  if (cachedCaptureRef !== undefined) return cachedCaptureRef;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- deliberate soft dependency
+    const module = require('react-native-view-shot') as { captureRef?: CaptureRef };
+    cachedCaptureRef = module.captureRef ?? null;
+  } catch {
+    cachedCaptureRef = null;
+  }
+  return cachedCaptureRef;
+}
+
+/** Whether this runtime can capture images at all. */
+export function isImageCaptureSupported(): boolean {
+  return resolveCaptureRef() !== null;
+}
 
 /**
  * Invisible capture host. Mount exactly once, at the app root.
@@ -95,7 +126,13 @@ export function ImageExportHost(): React.ReactElement {
       // One frame for the WebView to paint what it has just laid out. Capturing in the
       // same tick reliably yields a blank bitmap on Android.
       await new Promise((resolve) => setTimeout(resolve, 350));
-      const uri = await captureRef(containerRef, {
+      const capture = resolveCaptureRef();
+      if (!capture) {
+        throw new Error(
+          'Image export needs a development or preview build — it is not available in Expo Go.',
+        );
+      }
+      const uri = await capture(containerRef, {
         format: request.format === 'jpg' ? 'jpg' : 'png',
         quality: request.quality,
         width: IMAGE_WIDTH_PX,
@@ -123,18 +160,12 @@ export function ImageExportHost(): React.ReactElement {
         collapsable={false}
         style={{ width: IMAGE_WIDTH_PX, height: IMAGE_HEIGHT_PX, backgroundColor: '#FFFFFF' }}
       >
-        <WebView
-          originWhitelist={['*']}
-          source={{ html: request.html }}
-          style={{ width: IMAGE_WIDTH_PX, height: IMAGE_HEIGHT_PX, backgroundColor: '#FFFFFF' }}
-          scrollEnabled={false}
-          scalesPageToFit={false}
+        <HtmlView
+          html={request.html}
+          width={IMAGE_WIDTH_PX}
+          height={IMAGE_HEIGHT_PX}
+          scaleToFit={false}
           onLoadEnd={onLoadEnd}
-          // §11 privacy: the capture WebView must not be able to reach the network even
-          // if a document somehow contained a remote reference.
-          javaScriptEnabled={false}
-          cacheEnabled={false}
-          androidLayerType="software"
         />
       </View>
     </View>

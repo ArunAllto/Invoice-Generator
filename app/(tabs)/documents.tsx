@@ -4,14 +4,14 @@
  * Filter chips by type and status, search across number/client/item names, sort by date or
  * amount, a date-range filter, and long-press for duplicate / delete / share.
  *
- * Uses `FlashList` per §11's requirement that 1,000 documents scroll at 60 fps.
+ * The list is virtualised per §11's 60fps-at-1000-documents requirement; see DataList.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 
+import { DataList } from '../../src/components/DataList';
 import {
   Body,
   BottomSheet,
@@ -163,8 +163,9 @@ export default function DocumentsScreen(): React.ReactElement {
           message={search.length > 0 ? undefined : 'Create one from the Home tab.'}
         />
       ) : (
-        <FlashList
+        <DataList
           data={items}
+          estimatedItemSize={96}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

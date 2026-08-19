@@ -38,7 +38,7 @@ import {
   shareExport,
   type ExportFormat,
 } from '../../../src/export';
-import type { ImageFormat } from '../../../src/export/image';
+import { isImageCaptureSupported, type ImageFormat } from '../../../src/export/image';
 import { countPages, type RenderInput } from '../../../src/render/html';
 import { prepareRender } from '../../../src/render/prepare';
 import { useDatabase } from '../../../src/hooks/useDatabase';
@@ -197,6 +197,9 @@ export default function ExportScreen(): React.ReactElement {
   }
 
   const pageCount = input ? countPages(input) : 1;
+  // Image capture needs a native module absent from Expo Go, so the option is hidden there
+  // rather than offered and then failing at the point of use.
+  const imageSupported = isImageCaptureSupported();
 
   return (
     <Screen>
@@ -214,13 +217,17 @@ export default function ExportScreen(): React.ReactElement {
         <ChipGroup
           options={[
             { value: 'pdf' as ExportFormat, label: t('exportPdf') },
-            { value: 'image' as ExportFormat, label: t('exportImage') },
+            ...(imageSupported ? [{ value: 'image' as ExportFormat, label: t('exportImage') }] : []),
             { value: 'docx' as ExportFormat, label: t('exportDocx') },
           ]}
           value={format}
           onChange={setFormat}
         />
       </Field>
+
+      {!imageSupported ? (
+        <Caption>Image export needs a development or preview build; it is unavailable here.</Caption>
+      ) : null}
 
       {format === 'image' ? (
         <SwitchRow

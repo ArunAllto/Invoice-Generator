@@ -18,6 +18,14 @@
         "serve:prod"
       ],
       "autoPort": true
+    },
+    {
+      "name": "subpath",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/serve-static.mjs"
+      ],
+      "autoPort": true
     }
   ]
 }

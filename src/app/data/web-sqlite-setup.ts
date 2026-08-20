@@ -20,7 +20,29 @@
  *    `WebAssembly.instantiate`. jeep-sqlite 2.8 wants sql.js 1.11.x, which is why `package.json`
  *    pins it exactly rather than taking the latest. The binary is copied to `/assets` by a rule
  *    in `angular.json`.
+ *
+ * 3. **`wasmPath` must be set, or the app breaks the moment it is not served from the root.**
+ *    jeep-sqlite defaults it to the *absolute* `/assets`, which is right only at the domain root.
+ *    Hosted under a prefix — a GitHub Pages project site at `/<repo>/`, or any app served from a
+ *    sub-path — it requests `/assets/sql-wasm.wasm`, gets the host's 404, and the database never
+ *    opens. The symptom is a blank screen and one failed request, with nothing to connect it to
+ *    paths. So the path is derived from the document's own base URI below.
  */
+
+/**
+ * Where `sql-wasm.wasm` actually lives, as a path jeep-sqlite can use.
+ *
+ * Resolved against `document.baseURI` — which reflects the `<base href>` Angular was built with —
+ * so the answer is `/assets` at the root and `/craftydocs/assets` under that prefix, with no
+ * build-time configuration to keep in step.
+ */
+function resolveWasmPath(): string {
+  try {
+    return new URL('assets', document.baseURI).pathname.replace(/\/$/, '');
+  } catch {
+    return '/assets';
+  }
+}
 
 let setupPromise: Promise<void> | null = null;
 
@@ -42,6 +64,13 @@ export function prepareWebSqlite(): Promise<void> {
     let element = document.querySelector('jeep-sqlite');
     if (!element) {
       element = document.createElement('jeep-sqlite');
+      // Set before the element is attached: Stencil reads its props during initialisation, and the
+      // component boots its WASM from `wasmPath` as soon as it connects. Setting it afterwards is
+      // too late, and the attribute is set as well as the property so it survives any
+      // reflection-based re-read.
+      const wasmPath = resolveWasmPath();
+      (element as HTMLElement & { wasmPath?: string }).wasmPath = wasmPath;
+      element.setAttribute('wasm-path', wasmPath);
       document.body.appendChild(element);
     }
 

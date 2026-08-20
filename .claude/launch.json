@@ -9,6 +9,15 @@
         "start"
       ],
       "port": 3000
+    },
+    {
+      "name": "prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "serve:prod"
+      ],
+      "autoPort": true
     }
   ]
 }

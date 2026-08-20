@@ -1,0 +1,71 @@
+# Build the app and publish it to GitHub Pages, so it can be opened on a phone for testing.
+#
+# The base href matters more than it looks. On a project Pages site the app is served from
+# https://<user>.github.io/<repo>/, not from the root, so every asset and route has to be resolved
+# against that prefix. `${{ github.event.repository.name }}` is used rather than a hardcoded name so
+# the workflow keeps working if the repository is renamed or forked.
+#
+# Tests run before the build, not after: publishing a broken build to the URL someone is testing on
+# wastes their time in the most annoying way possible.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  # So a test build can be published from any branch without merging first.
+  workflow_dispatch:
+
+# Least privilege: read the repo, write Pages, and use the OIDC token Pages deployment requires.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. `cancel-in-progress: false` because cancelling a half-finished Pages
+# deployment can leave the site serving a partial build.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test the pure layers
+        run: npm run test:core
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build -- --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Prepare for static hosting
+        run: node scripts/prepare-static-host.mjs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/craftydocs-ionic/browser
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

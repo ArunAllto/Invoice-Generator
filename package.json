@@ -12,7 +12,9 @@
     "cap:apk": "ng build && cap sync android && cd android && ./gradlew assembleRelease",
     "test:core": "vitest run",
     "test:core:watch": "vitest",
-    "test:ng": "ng test"
+    "test:ng": "ng test",
+    "serve:prod": "ng serve --configuration production",
+    "build:static": "ng build && node scripts/prepare-static-host.mjs"
   },
   "private": true,
   "packageManager": "npm@11.17.0",

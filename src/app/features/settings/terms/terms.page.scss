@@ -1,0 +1,18 @@
+.cd-note {
+  display: block;
+  padding: 12px 20px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Three small buttons in a row need to wrap on a narrow phone rather than squeeze. */
+.cd-pills {
+  max-width: 45%;
+}
+
+.cd-pills ion-button {
+  --padding-start: 4px;
+  --padding-end: 4px;
+  margin: 0;
+  font-size: 11px;
+}

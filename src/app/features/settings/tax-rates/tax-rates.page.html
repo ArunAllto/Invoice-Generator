@@ -1,0 +1,52 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Tax rates</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="add()" aria-label="Add a tax rate">
+        <ion-icon slot="icon-only" name="add-outline" />
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-note class="cd-note">
+    These are the rates offered on each line item. Changing one here never alters a document already
+    written — the rate is copied onto the line when you choose it.
+  </ion-note>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (presets().length === 0) {
+    <div class="cd-centre">
+      <p>No tax rates set up.</p>
+      <ion-note>Add the slabs you actually use and the rest stay out of your way.</ion-note>
+    </div>
+  } @else {
+    <ion-list inset="true">
+      @for (preset of presets(); track preset.id) {
+        <ion-item button="true" (click)="edit(preset)">
+          <ion-label>
+            <h3>{{ preset.label }}</h3>
+            <p>{{ rateLabel(preset) }}</p>
+          </ion-label>
+          <div slot="end" class="cd-pills">
+            @if (preset.isDefault) {
+              <ion-badge color="primary">Default</ion-badge>
+            }
+            <ion-button
+              fill="clear"
+              size="small"
+              color="danger"
+              aria-label="Remove this rate"
+              (click)="remove(preset); $event.stopPropagation()"
+            >
+              Remove
+            </ion-button>
+          </div>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>

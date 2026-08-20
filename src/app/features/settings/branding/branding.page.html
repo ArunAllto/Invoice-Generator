@@ -1,0 +1,97 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Logo, signature &amp; template</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    <ion-list inset="true">
+      <ion-list-header>Logo</ion-list-header>
+      <ion-item lines="none">
+        <div class="cd-image-row">
+          @if (logoUri()) {
+            <img class="cd-logo-preview" [src]="logoUri()" alt="Your logo" />
+          } @else {
+            <div class="cd-image-empty">No logo</div>
+          }
+          <div class="cd-image-actions">
+            <!-- A plain file input reaches both the gallery and the camera through the Android
+                 WebView picker, with no extra permission and no native plugin. -->
+            <label class="cd-file-button">
+              {{ logoUri() ? 'Replace' : 'Choose an image' }}
+              <input type="file" accept="image/*" (change)="onFile('logo', $event)" />
+            </label>
+            @if (logoUri()) {
+              <ion-button fill="clear" size="small" color="danger" (click)="removeImage('logo')">
+                Remove
+              </ion-button>
+              <ion-note>{{ sizeLabel(logoUri()) }}</ion-note>
+            }
+          </div>
+        </div>
+      </ion-item>
+      <ion-note class="cd-note">
+        Printed at the top left of every document. A wide, transparent PNG works best.
+      </ion-note>
+    </ion-list>
+
+    <ion-list inset="true">
+      <ion-list-header>Signature</ion-list-header>
+      <ion-item lines="none">
+        <div class="cd-image-row">
+          @if (signatureUri()) {
+            <img class="cd-signature-preview" [src]="signatureUri()" alt="Your signature" />
+          } @else {
+            <div class="cd-image-empty">No signature</div>
+          }
+          <div class="cd-image-actions">
+            <label class="cd-file-button">
+              {{ signatureUri() ? 'Replace' : 'Choose an image' }}
+              <input type="file" accept="image/*" (change)="onFile('signature', $event)" />
+            </label>
+            @if (signatureUri()) {
+              <ion-button
+                fill="clear"
+                size="small"
+                color="danger"
+                (click)="removeImage('signature')"
+              >
+                Remove
+              </ion-button>
+              <ion-note>{{ sizeLabel(signatureUri()) }}</ion-note>
+            }
+          </div>
+        </div>
+      </ion-item>
+      <ion-note class="cd-note">
+        Sits above the Authorised Signatory line. Photograph your signature on white paper and crop
+        it tight.
+      </ion-note>
+    </ion-list>
+
+    <ion-list inset="true">
+      <ion-list-header>Template</ion-list-header>
+      <ion-radio-group [value]="template()" (ionChange)="onTemplate($any($event.detail).value)">
+        @for (option of templates; track option.value) {
+          <ion-item>
+            <ion-radio [value]="option.value">
+              <ion-label class="ion-text-wrap">
+                <h3>{{ option.label }}</h3>
+                <p>{{ option.description }}</p>
+              </ion-label>
+            </ion-radio>
+          </ion-item>
+        }
+      </ion-radio-group>
+      <!-- §10.6 is worth stating: the fear with a template switch is that a total might move. -->
+      <ion-note class="cd-note">
+        Changing template changes only the styling. Every number on the document stays exactly the
+        same.
+      </ion-note>
+    </ion-list>
+  }
+</ion-content>

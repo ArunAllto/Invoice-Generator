@@ -1,0 +1,8 @@
+/* The row is a button, so the trailing controls need to sit above it and stop propagation —
+   see the template. Nothing here overrides layout; the shared list styles do that. */
+
+.cd-pills ion-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  margin: 0;
+}

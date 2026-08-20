@@ -1,0 +1,41 @@
+.cd-note {
+  display: block;
+  padding: 12px 20px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cd-actions {
+  padding: 8px 16px 16px;
+}
+
+/* Matches an expand="block" ion-button, because a native file input cannot be styled and the
+   label has to stand in for one. See branding.page.scss for the same pattern. */
+.cd-file-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--cd-touch-target);
+  border: 1px solid var(--cd-accent);
+  border-radius: 4px;
+  color: var(--cd-accent);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.cd-file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A label cannot be disabled the way a button can, so the pointer has to be blocked in CSS. */
+.cd-file-button.cd-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

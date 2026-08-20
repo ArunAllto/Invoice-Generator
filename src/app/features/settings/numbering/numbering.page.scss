@@ -1,0 +1,14 @@
+.cd-note {
+  display: block;
+  padding: 12px 20px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The example number is the point of the row, so it is set in the tabular figures the
+   document itself uses rather than the body font. */
+.cd-next-number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--cd-accent);
+}

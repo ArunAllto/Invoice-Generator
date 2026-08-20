@@ -1,0 +1,83 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Item catalogue</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="add()" aria-label="Add an item">
+        <ion-icon slot="icon-only" name="add-outline" />
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      placeholder="Search the catalogue"
+      [debounce]="250"
+      (ionInput)="onSearch($any($event.target).value)"
+    />
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item lines="none">
+    <ion-toggle
+      [checked]="includeArchived()"
+      (ionChange)="onArchivedToggle($any($event.detail).checked)"
+    >
+      <ion-label>
+        <h3>Show archived items</h3>
+        <p>Archived items stay off the picker but keep their old documents.</p>
+      </ion-label>
+    </ion-toggle>
+  </ion-item>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (items().length === 0) {
+    <div class="cd-centre">
+      <p>Nothing in the catalogue yet.</p>
+      <ion-note>
+        Add the things you sell once, with a rate, and they become one tap in the document editor.
+      </ion-note>
+    </div>
+  } @else {
+    @for (group of groups(); track group.heading) {
+      <ion-list inset="true">
+        <ion-list-header>{{ group.heading }}</ion-list-header>
+        @for (item of group.entries; track item.id) {
+          <ion-item button="true" (click)="edit(item)">
+            <ion-label>
+              <h3>{{ item.name }}</h3>
+              <p>{{ rateLabel(item) }} · {{ taxLabel(item) }}</p>
+            </ion-label>
+            <div slot="end" class="cd-pills">
+              @if (item.archived) {
+                <ion-badge color="medium">Archived</ion-badge>
+              }
+              @if (item.timesUsed > 0) {
+                <ion-badge color="light">Used {{ item.timesUsed }}×</ion-badge>
+              }
+              <!-- §7.3: favourites sort to the top of the picker. -->
+              <ion-button
+                fill="clear"
+                size="small"
+                [attr.aria-label]="item.isFavourite ? 'Remove from favourites' : 'Add to favourites'"
+                (click)="toggleFavourite(item); $event.stopPropagation()"
+              >
+                <ion-icon slot="icon-only" [name]="item.isFavourite ? 'star' : 'star-outline'" />
+              </ion-button>
+              <ion-button
+                fill="clear"
+                size="small"
+                color="danger"
+                aria-label="Remove this item"
+                (click)="remove(item); $event.stopPropagation()"
+              >
+                Remove
+              </ion-button>
+            </div>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  }
+</ion-content>

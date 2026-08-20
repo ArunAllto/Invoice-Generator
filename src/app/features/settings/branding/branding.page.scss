@@ -1,0 +1,78 @@
+.cd-note {
+  display: block;
+  padding: 4px 20px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cd-image-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  width: 100%;
+}
+
+/* A white plate behind both previews. These images are meant for white paper, and a transparent
+   PNG of dark ink would disappear entirely against the dark theme — so the preview shows them on
+   the background they will actually be printed on, not the app's. */
+.cd-logo-preview,
+.cd-signature-preview,
+.cd-image-empty {
+  background: #ffffff;
+  border: 1px solid var(--cd-border);
+  border-radius: 4px;
+  padding: 6px;
+  object-fit: contain;
+}
+
+.cd-logo-preview {
+  width: 96px;
+  height: 64px;
+}
+
+.cd-signature-preview {
+  width: 128px;
+  height: 48px;
+}
+
+.cd-image-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 64px;
+  font-size: 11px;
+  color: #8a93a1;
+}
+
+.cd-image-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* The native file input cannot be styled, so the label *is* the button and the input hides inside
+   it. Clicking the label opens the picker with no script involved, which also means it still works
+   if scripting is throttled mid-transition. */
+.cd-file-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cd-touch-target);
+  padding: 0 14px;
+  border: 1px solid var(--cd-accent);
+  border-radius: 4px;
+  color: var(--cd-accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cd-file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

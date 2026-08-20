@@ -1,0 +1,40 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Document numbering</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-note class="cd-note">
+    Current financial year: <strong>{{ financialYear }}</strong>. A number is assigned when a
+    document leaves draft, so abandoned drafts leave no gaps in your books.
+  </ion-note>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    @for (type of types; track type) {
+      <ion-list inset="true">
+        <ion-list-header>{{ typeLabels[type] }}</ion-list-header>
+        @for (s of forType(type); track s.id) {
+          <ion-item button="true" (click)="edit(s)">
+            <ion-label>
+              <!-- Rendered with the same function the repository uses, so the promise and the
+                   assigned number cannot disagree. -->
+              <h3 class="cd-next-number">{{ preview(s) }}</h3>
+              <p>{{ s.label }} · {{ resetLabel(s) }}</p>
+            </ion-label>
+            @if (s.isDefault) {
+              <ion-badge slot="end" color="primary">Default</ion-badge>
+            }
+          </ion-item>
+        } @empty {
+          <ion-item lines="none">
+            <ion-label class="cd-muted">No series set up for these yet.</ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  }
+</ion-content>

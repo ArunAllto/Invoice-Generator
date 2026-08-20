@@ -4,8 +4,8 @@ Port of the CraftyDocs Android app from Expo / React Native to **Ionic 9 + Angul
 Capacitor 8**, against the specification in `REQUIREMENTS.md` (kept outside this repository).
 
 > **Status: work in progress.** The domain logic is complete and fully tested, the edit loop works
-> and the document preview renders, but file export (PDF / DOCX / PNG) is not written and nothing has
-> run on Android yet. Read "What is done / what is not" before relying on it.
+> the document preview renders and every settings screen is built, but writing an export to a *file*
+> (PDF / DOCX / PNG) is not done and nothing has run on Android yet. Read "What is done / what is not" before relying on it.
 >
 > The previous Expo / React Native implementation — which did produce a verified APK — was removed
 > from the working tree to save space. It is preserved in git at the tag `expo-final-rn`:
@@ -42,6 +42,7 @@ src/
 │   │   ├── sqlite.service.ts     one connection; migrations; query/run/transaction
 │   │   ├── web-sqlite-setup.ts   jeep-sqlite bootstrap, browser only
 │   │   ├── seed.ts               first-run data (§5.9)
+│   │   ├── backup.service.ts     whole-database JSON dump and restore (§13)
 │   │   ├── rows.ts               row types and defensive narrowing
 │   │   └── repositories/
 │   │       ├── documents.repository.ts
@@ -77,6 +78,14 @@ src/
 │   │   └── settings/
 │   │       ├── settings-hub/     settings-hub.page.{ts,html,scss}
 │   │       ├── business-profile/ business-profile.page.{ts,html,scss}
+│   │       ├── branding/         logo, signature and template
+│   │       ├── catalogue/        item catalogue (§7.3)
+│   │       ├── tax-rates/        GST rate presets
+│   │       ├── numbering/        prefixes, next number, live example
+│   │       ├── terms/            saved terms blocks
+│   │       ├── custom-fields/    fields the owner declares
+│   │       ├── defaults/         validity, due days, date style
+│   │       ├── backup/           backup, restore, erase
 │   │       ├── appearance/       appearance.page.{ts,html,scss}
 │   │       ├── about/            about.page.{ts,html,scss}
 │   │       └── not-found/        not-found.page.{ts,html,scss}
@@ -202,24 +211,27 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Business profile (§7, §9.4) | Working: save, GSTIN gate, bank details |
 | Document preview (§10.2) | Working: renders the real A4 HTML in an iframe, page count, browser print dialogue |
 | About (§13.5) | Written |
+| Item catalogue (§7.3) | Working: add, edit, reprice, favourite, archive-or-delete, grouped by category |
+| Tax rates (§9.2) | Working: add, edit, remove |
+| Document numbering (§8) | Working: prefix, suffix, pad width and next number, with a live example of the next number |
+| Terms blocks (§7.5) | Working: edit, scope per document type, make default |
+| Extra fields (§7.7) | Working: declare per scope, rename, retype, choose whether printed |
+| Document defaults (§13) | Working: validity, due days and date style, each shown worked out against today |
+| Logo, signature & template (§7.1, §7.2, §10.6) | Working: file picker to data URI with size and type limits, four templates |
+| Backup & restore (§13) | Working: JSON dump of all 11 tables, validated on the way in, restored in one transaction; plus erase-everything |
+| Document block toggles (§6.2) | Working: 15 toggles, each saying what it does and why it would have no effect; savable as the default for new documents |
 | **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override, client picker |
 | Payments and receipts (§6.5) | Working: record and delete payments, derived part-paid / paid, raise a receipt from a payment |
 | Status lifecycle (§6.4) | Working: buttons generated from the transition table, so cancel is offered wherever the domain allows it |
 
 ### Known gaps
 
-Found by walking every screen against the spec, and not yet built:
-
 | Gap | Effect |
 |---|---|
-| Document blocks have no UI (§6.2) | `DocumentBlocks` has 16 toggles — HSN column, bank details, UPI QR, signature, tax summary — and the store exposes `setBlocks`, but nothing renders them. The defaults are all you get, so the UPI QR cannot be switched on from the app. |
-| Item catalogue screen (§7.3) | Seeded items work and "Add from catalogue" lists them, but there is no screen to add, edit or price an item. The empty-catalogue toast points at a settings row that does not exist. |
-| Logo, signature, branding (§7.1, §7.2) | The renderer accepts both as `data:` URIs and the snapshot has columns for them; nothing captures them. Needs `@capacitor/camera`. |
-| File export (§10.2–10.5) | Preview and the browser print dialogue work. PDF, DOCX and PNG to a file, and sharing, are not written. |
-| Backup and restore (§13) | No UI. |
-| Custom fields, tax presets, numbering, terms and defaults screens | The data layer and repositories are complete for all of them; the settings screens are not. Marked "Soon" in the app rather than left to look broken. |
-
----
+| File export (§10.2–10.5) | Preview renders the real document and the browser print dialogue produces a PDF, but writing a PDF, DOCX or PNG to a file, and sharing it, are not built. Needs `@capacitor/filesystem`, `@capacitor/share` and `docx`. |
+| Font embedding (§10.1) | The preview uses the platform font stack. A truly self-contained export needs an embedded `@font-face`; `RenderOptions.fontCss` is the seam it plugs into. |
+| Onboarding (§14) | No first-run walkthrough. The dashboard banner covers the one thing that matters — filling in the business profile. |
+| Android build (§12) | Nothing has run on a device. `npm i @capacitor/android` then `npx cap add android`. |
 
 ### Dependencies
 

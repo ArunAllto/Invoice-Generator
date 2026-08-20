@@ -1,0 +1,83 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Backup &amp; restore</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-note class="cd-note">
+    There is no account and no server, so a backup only counts once it is off this device. Take one
+    before you change phones, and keep it somewhere that is not the phone.
+  </ion-note>
+
+  <ion-list inset="true">
+    <ion-list-header>Backup</ion-list-header>
+    <ion-item lines="none">
+      <ion-label class="ion-text-wrap">
+        <h3>Save everything to one file</h3>
+        <p>
+          Documents, clients, catalogue, terms, numbering and settings — as JSON you can read in a
+          text editor.
+        </p>
+      </ion-label>
+    </ion-item>
+    <div class="cd-actions">
+      <ion-button expand="block" [disabled]="busy()" (click)="exportBackup()">
+        {{ busy() ? 'Working…' : 'Save a backup' }}
+      </ion-button>
+    </div>
+    @if (lastBackupName()) {
+      <ion-note class="cd-note">Last written: {{ lastBackupName() }}</ion-note>
+    }
+  </ion-list>
+
+  <ion-list inset="true">
+    <ion-list-header>Restore</ion-list-header>
+    <ion-item lines="none">
+      <ion-label class="ion-text-wrap">
+        <h3>Load a backup file</h3>
+        <!-- Said plainly, because this is the one destructive operation in the app. -->
+        <p>
+          Everything on this device is deleted and replaced. You will be shown what is in the file
+          before anything happens.
+        </p>
+      </ion-label>
+    </ion-item>
+    <div class="cd-actions">
+      <label class="cd-file-button" [class.cd-disabled]="busy()">
+        Choose a backup file
+        <input type="file" accept="application/json,.json" (change)="onRestoreFile($event)" />
+      </label>
+    </div>
+  </ion-list>
+
+  <ion-list inset="true">
+    <ion-list-header>Start again</ion-list-header>
+    <ion-item lines="none">
+      <ion-label class="ion-text-wrap">
+        <h3>Delete everything</h3>
+        <p>For handing this phone on, or starting from scratch. Take a backup first.</p>
+      </ion-label>
+    </ion-item>
+    <div class="cd-actions">
+      <ion-button expand="block" fill="outline" color="danger" [disabled]="busy()" (click)="eraseEverything()">
+        Delete everything
+      </ion-button>
+    </div>
+  </ion-list>
+
+  <div class="cd-centre">
+    <ion-note>
+      @if (status().ready) {
+        Database v{{ status().schemaVersion }}
+      } @else {
+        Database not open
+      }
+    </ion-note>
+  </div>
+
+  @if (busy()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  }
+</ion-content>

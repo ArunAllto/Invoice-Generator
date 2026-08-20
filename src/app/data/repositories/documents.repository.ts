@@ -332,8 +332,11 @@ export class DocumentsRepository {
     const terms = await this.masters.getDefaultTerms(type);
     const client = options.clientId ? await this.masters.getClient(options.clientId) : null;
 
-    const validityDays = Number((await this.masters.getSetting('document.quotationValidityDays')) ?? '15');
-    const dueDays = Number((await this.masters.getSetting('document.invoiceDueDays')) ?? '15');
+    const validityDays = readDayCount(
+      await this.masters.getSetting('document.quotationValidityDays'),
+      15,
+    );
+    const dueDays = readDayCount(await this.masters.getSetting('document.invoiceDueDays'), 15);
     const storedBlocks = await this.masters.getSetting('document.defaultBlocks');
 
     const taxInference = inferTaxMode({
@@ -1028,6 +1031,19 @@ export class DocumentsRepository {
       id,
     ]);
   }
+}
+
+/**
+ * Read a stored day count, falling back on anything unusable.
+ *
+ * `?? '15'` alone is not enough: it catches `null` but not an empty string, and `Number('')` is
+ * `0` — which would silently make every invoice due on the day it was raised. A settings row can be
+ * blank after a restore from an older backup, so the check has to cover it.
+ */
+function readDayCount(raw: string | null, fallback: number): number {
+  if (raw === null || raw.trim().length === 0) return fallback;
+  const parsed = Math.trunc(Number(raw));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 /**

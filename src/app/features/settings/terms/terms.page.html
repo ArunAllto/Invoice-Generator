@@ -1,0 +1,60 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Terms &amp; conditions</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="add()" aria-label="Add a terms block">
+        <ion-icon slot="icon-only" name="add-outline" />
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-note class="cd-note">
+    The default block for each type is copied onto new documents. Editing it here leaves documents
+    you have already written exactly as they are.
+  </ion-note>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (blocks().length === 0) {
+    <div class="cd-centre">
+      <p>No saved terms.</p>
+      <ion-note>Write them once and they go on every document of that type.</ion-note>
+    </div>
+  } @else {
+    <ion-list inset="true">
+      @for (block of blocks(); track block.id) {
+        <ion-item button="true" (click)="edit(block)">
+          <ion-label class="ion-text-wrap">
+            <h3>{{ block.title }}</h3>
+            <p>{{ summary(block) }}</p>
+            <p class="cd-muted">{{ scopeLabels[block.docType] }}</p>
+          </ion-label>
+          <div slot="end" class="cd-pills">
+            @if (block.isDefault) {
+              <ion-badge color="primary">Default</ion-badge>
+            } @else {
+              <ion-button fill="clear" size="small" (click)="makeDefault(block); $event.stopPropagation()">
+                Make default
+              </ion-button>
+            }
+            <ion-button fill="clear" size="small" (click)="changeScope(block); $event.stopPropagation()">
+              Applies to
+            </ion-button>
+            <ion-button
+              fill="clear"
+              size="small"
+              color="danger"
+              aria-label="Remove these terms"
+              (click)="remove(block); $event.stopPropagation()"
+            >
+              Remove
+            </ion-button>
+          </div>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>

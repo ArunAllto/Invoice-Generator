@@ -58,11 +58,15 @@ import {
   statusLabel,
   transitionLabel,
 } from '../../../core/status';
-import type { DiscountMode, DocumentStatus, Paise, TaxMode } from '../../../core/types';
+import type { DiscountMode, DocumentBlocks, DocumentStatus, Paise, TaxMode } from '../../../core/types';
 import { todayIso } from '../../../core/dates';
 import type { LineItem, Payment } from '../../../data/repositories/documents.repository';
 import { DocumentsRepository } from '../../../data/repositories/documents.repository';
-import { MastersRepository, type TaxPreset } from '../../../data/repositories/masters.repository';
+import {
+  MastersRepository,
+  SETTINGS_KEYS,
+  type TaxPreset,
+} from '../../../data/repositories/masters.repository';
 import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
 import { PaisePipe } from '../../../shared/pipes/paise.pipe';
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
@@ -412,6 +416,98 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
 
   onRoundOff(enabled: boolean): void {
     this.store.patchDocument({ roundOffEnabled: enabled });
+  }
+
+  // -------------------------------------------------------------------------
+  // What appears on the document (§6.2, §10.1)
+  // -------------------------------------------------------------------------
+
+  /**
+   * The togglable parts of the output, as data.
+   *
+   * Declared here rather than spelled out in the template so each one can carry the sentence that
+   * explains what turning it off actually does. "Tax columns" is not self-explanatory, and a toggle
+   * whose effect you have to discover by previewing is a toggle people leave alone.
+   *
+   * Only blocks the owner has a reason to change are listed. `clientBlock` is deliberately absent:
+   * §7.4 already drops it when there is no client, and hiding a client who *is* on the document
+   * would produce a bill addressed to nobody.
+   */
+  readonly blockOptions: ReadonlyArray<{
+    key: keyof DocumentBlocks;
+    label: string;
+    hint: string;
+  }> = [
+    { key: 'descriptions', label: 'Item descriptions', hint: 'The second line under each item name.' },
+    { key: 'unitColumn', label: 'Unit column', hint: 'Shows nos, kg, sqft beside the quantity.' },
+    { key: 'hsnColumn', label: 'HSN / SAC column', hint: 'Required on a GST invoice above the turnover threshold.' },
+    { key: 'taxColumns', label: 'Tax column', hint: 'The per-line tax rate. Turn off for a tax-inclusive quote.' },
+    { key: 'taxSummary', label: 'Tax summary table', hint: 'Totals by rate at the foot, with the CGST/SGST split.' },
+    { key: 'discountRow', label: 'Discount row', hint: 'Hidden automatically when there is no discount.' },
+    { key: 'shippingRow', label: 'Delivery / shipping row', hint: 'Show even when the charge is zero.' },
+    { key: 'roundOffRow', label: 'Round-off row', hint: 'Shows the paise added or dropped to reach a whole rupee.' },
+    { key: 'amountInWords', label: 'Amount in words', hint: 'Rupees and paise spelled out under the total.' },
+    { key: 'bankDetails', label: 'Bank details', hint: 'Only the fields filled in on your business profile are printed.' },
+    { key: 'upiQr', label: 'UPI payment QR', hint: 'Needs a UPI ID on your business profile.' },
+    { key: 'signature', label: 'Signature block', hint: 'The "Authorised Signatory" line at the foot.' },
+    { key: 'terms', label: 'Terms & conditions', hint: 'The terms typed on this document.' },
+    { key: 'notes', label: 'Notes', hint: 'The notes typed on this document.' },
+    { key: 'footerLine', label: 'Footer line', hint: 'Your name, phone and email across the bottom of every page.' },
+  ];
+
+  /**
+   * Whether a block would have any visible effect if switched on.
+   *
+   * A toggle that silently does nothing is worse than one that is absent, so the UPI QR says why it
+   * cannot appear rather than pretending. Checked against the document's own snapshot, not the
+   * current profile — the snapshot is what will be printed (§5.4).
+   */
+  blockUnavailableReason(key: keyof DocumentBlocks): string | null {
+    const doc = this.document();
+    if (!doc) return null;
+    if (key === 'upiQr' && !doc.businessSnapshot.upiId) {
+      return 'Add a UPI ID to your business profile first.';
+    }
+    if (key === 'bankDetails' && !doc.businessSnapshot.bankName && !doc.businessSnapshot.bankAccountNo) {
+      return 'Add bank details to your business profile first.';
+    }
+    if ((key === 'taxColumns' || key === 'taxSummary') && doc.taxMode === 'none') {
+      return 'This document has no tax on it.';
+    }
+    // The renderer only draws the HSN column when a line actually carries a code, so an empty
+    // column is never printed. Without saying so, the toggle looks broken.
+    if (key === 'hsnColumn' && !this.lines().some((line) => line.hsnSac.trim().length > 0)) {
+      return 'No item has an HSN or SAC code yet.';
+    }
+    return null;
+  }
+
+  blockValue(key: keyof DocumentBlocks): boolean {
+    return this.document()?.blocks[key] ?? false;
+  }
+
+  toggleBlock(key: keyof DocumentBlocks, enabled: boolean): void {
+    const doc = this.document();
+    if (!doc) return;
+    this.store.setBlocks({ ...doc.blocks, [key]: enabled });
+  }
+
+  /**
+   * Save this document's block choices as the default for new documents (§13).
+   *
+   * Offered because the owner's preference is a property of how they invoice, not of one invoice.
+   * Setting it up once per document is the sort of friction that makes people stop using a toggle
+   * at all.
+   */
+  async saveBlocksAsDefault(): Promise<void> {
+    const doc = this.document();
+    if (!doc) return;
+    try {
+      await this.masters.setSetting(SETTINGS_KEYS.defaultBlocks, JSON.stringify(doc.blocks));
+      this.toast.show('New documents will start like this.');
+    } catch (cause) {
+      this.toast.error(cause);
+    }
   }
 
   // -------------------------------------------------------------------------

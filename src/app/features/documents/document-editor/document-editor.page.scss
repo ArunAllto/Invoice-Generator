@@ -78,3 +78,8 @@
 .cd-inline-actions {
   padding: 8px 16px 0;
 }
+
+/* Why a toggle would have no effect. Warning-toned, because it is a dead end the owner can fix. */
+.cd-warn {
+  color: var(--cd-warning);
+}

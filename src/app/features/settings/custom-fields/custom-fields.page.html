@@ -1,0 +1,57 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Extra fields</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-note class="cd-note">
+    Fields of your own, for whatever the standard form does not cover. A field can be recorded
+    without being printed — useful when the note is for you and not for the client.
+  </ion-note>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    @for (scope of scopes; track scope.value) {
+      <ion-list inset="true">
+        <ion-list-header>{{ scope.label }}</ion-list-header>
+        <ion-note class="cd-note">{{ scope.hint }}</ion-note>
+
+        @for (def of forScope(scope.value); track def.id) {
+          <ion-item>
+            <ion-label class="ion-text-wrap">
+              <h3>{{ def.label }}</h3>
+              <p>{{ typeLabel(def) }}</p>
+            </ion-label>
+            <div slot="end" class="cd-pills">
+              <ion-button fill="clear" size="small" (click)="rename(def)">Rename</ion-button>
+              <ion-button fill="clear" size="small" (click)="changeType(def)">Type</ion-button>
+              <ion-button fill="clear" size="small" color="danger" (click)="remove(def)">
+                Remove
+              </ion-button>
+            </div>
+          </ion-item>
+          <ion-item lines="none">
+            <ion-toggle
+              [checked]="def.showOnDocument"
+              (ionChange)="toggleShown(def, $any($event.detail).checked)"
+            >
+              <ion-label class="cd-muted">Print on the document</ion-label>
+            </ion-toggle>
+          </ion-item>
+        } @empty {
+          <ion-item lines="none">
+            <ion-label class="cd-muted">None yet.</ion-label>
+          </ion-item>
+        }
+
+        <ion-item button="true" (click)="add(scope.value)">
+          <ion-icon slot="start" name="add-outline" />
+          <ion-label color="primary">Add a field</ion-label>
+        </ion-item>
+      </ion-list>
+    }
+  }
+</ion-content>

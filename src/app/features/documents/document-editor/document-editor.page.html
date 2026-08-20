@@ -530,7 +530,45 @@
         </ion-accordion>
       }
 
-      <!-- 6. Notes -->
+      <!-- 6. What appears on the document (§6.2, §10.1). -->
+      <ion-accordion value="blocks">
+        <ion-item slot="header" color="light">
+          <ion-label>What appears on the document</ion-label>
+        </ion-item>
+        <div slot="content">
+          <ion-note class="cd-inline-note">
+            These affect the printed document, not this screen. Preview to see the result.
+          </ion-note>
+          <ion-list>
+            @for (option of blockOptions; track option.key) {
+              <ion-item>
+                <ion-toggle
+                  [checked]="blockValue(option.key)"
+                  [disabled]="!editable()"
+                  (ionChange)="toggleBlock(option.key, $any($event.detail).checked)"
+                >
+                  <ion-label class="ion-text-wrap">
+                    <h3>{{ option.label }}</h3>
+                    <!-- A toggle that silently does nothing is worse than one that is absent. -->
+                    @if (blockUnavailableReason(option.key); as reason) {
+                      <p class="cd-warn">{{ reason }}</p>
+                    } @else {
+                      <p>{{ option.hint }}</p>
+                    }
+                  </ion-label>
+                </ion-toggle>
+              </ion-item>
+            }
+          </ion-list>
+          <div class="cd-inline-actions">
+            <ion-button expand="block" fill="outline" (click)="saveBlocksAsDefault()">
+              Use these on new documents
+            </ion-button>
+          </div>
+        </div>
+      </ion-accordion>
+
+      <!-- 7. Notes -->
       <ion-accordion value="notes">
         <ion-item slot="header" color="light">
           <ion-label>Notes</ion-label>
@@ -548,7 +586,7 @@
         </div>
       </ion-accordion>
 
-      <!-- 7. Terms -->
+      <!-- 8. Terms -->
       <ion-accordion value="terms">
         <ion-item slot="header" color="light">
           <ion-label>Terms &amp; conditions</ion-label>

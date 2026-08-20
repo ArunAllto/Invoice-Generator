@@ -76,9 +76,53 @@ export const routes: Routes = [
       import('./features/clients/client-editor/client-editor.page').then((m) => m.ClientEditorPage),
   },
 
-  { path: 'settings/business', loadComponent: () => import('./features/settings/business-profile/business-profile.page').then((m) => m.BusinessProfilePage) },
-  { path: 'settings/appearance', loadComponent: () => import('./features/settings/appearance/appearance.page').then((m) => m.AppearancePage) },
-  { path: 'settings/about', loadComponent: () => import('./features/settings/about/about.page').then((m) => m.AboutPage) },
+  /** The settings stack. One line per screen; all lazily loaded. */
+  {
+    path: 'settings/business',
+    loadComponent: () =>
+      import('./features/settings/business-profile/business-profile.page').then((m) => m.BusinessProfilePage),
+  },
+  {
+    path: 'settings/branding',
+    loadComponent: () => import('./features/settings/branding/branding.page').then((m) => m.BrandingPage),
+  },
+  {
+    path: 'settings/catalogue',
+    loadComponent: () => import('./features/settings/catalogue/catalogue.page').then((m) => m.CataloguePage),
+  },
+  {
+    path: 'settings/appearance',
+    loadComponent: () => import('./features/settings/appearance/appearance.page').then((m) => m.AppearancePage),
+  },
+  {
+    path: 'settings/tax',
+    loadComponent: () => import('./features/settings/tax-rates/tax-rates.page').then((m) => m.TaxRatesPage),
+  },
+  {
+    path: 'settings/numbering',
+    loadComponent: () => import('./features/settings/numbering/numbering.page').then((m) => m.NumberingPage),
+  },
+  {
+    path: 'settings/terms',
+    loadComponent: () => import('./features/settings/terms/terms.page').then((m) => m.TermsPage),
+  },
+  {
+    path: 'settings/custom-fields',
+    loadComponent: () =>
+      import('./features/settings/custom-fields/custom-fields.page').then((m) => m.CustomFieldsPage),
+  },
+  {
+    path: 'settings/defaults',
+    loadComponent: () => import('./features/settings/defaults/defaults.page').then((m) => m.DefaultsPage),
+  },
+  {
+    path: 'settings/backup',
+    loadComponent: () => import('./features/settings/backup/backup.page').then((m) => m.BackupPage),
+  },
+  {
+    path: 'settings/about',
+    loadComponent: () => import('./features/settings/about/about.page').then((m) => m.AboutPage),
+  },
 
   { path: '', redirectTo: 'tabs/home', pathMatch: 'full' },
 

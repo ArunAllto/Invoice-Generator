@@ -75,7 +75,10 @@ export class SqliteService {
         );
         await connection.open();
 
-        await connection.execute('PRAGMA foreign_keys = ON;');
+        // `false` = do not wrap in the plugin's own transaction. Every execute/run call in this
+        // service passes it, because the plugin defaults to managing a transaction per call and
+        // that silently ends any transaction we started ourselves.
+        await connection.execute('PRAGMA foreign_keys = ON;', false);
         const schemaVersion = await this.migrate(connection);
 
         this.connection = connection;
@@ -107,12 +110,18 @@ export class SqliteService {
       if (migration.version <= current) continue;
       await connection.beginTransaction();
       try {
-        await connection.execute(migration.up);
+        await connection.execute(migration.up, false);
         // PRAGMA takes no bound parameters; the value is a checked integer from our own table.
-        await connection.execute(`PRAGMA user_version = ${Math.trunc(migration.version)};`);
+        await connection.execute(`PRAGMA user_version = ${Math.trunc(migration.version)};`, false);
         await connection.commitTransaction();
       } catch (cause) {
-        await connection.rollbackTransaction();
+        // Roll back in its own try: if the rollback also fails, its message must not replace the
+        // real reason the migration failed.
+        try {
+          await connection.rollbackTransaction();
+        } catch {
+          // Nothing useful to do; the original cause is what matters.
+        }
         throw new Error(
           `Migration ${migration.version} (${migration.name}) failed: ${
             cause instanceof Error ? cause.message : String(cause)
@@ -173,7 +182,11 @@ export class SqliteService {
       await connection.commitTransaction();
       await this.persist();
     } catch (cause) {
-      await connection.rollbackTransaction();
+      try {
+        await connection.rollbackTransaction();
+      } catch {
+        // Preserve the original failure rather than reporting a rollback problem.
+      }
       throw cause;
     }
   }

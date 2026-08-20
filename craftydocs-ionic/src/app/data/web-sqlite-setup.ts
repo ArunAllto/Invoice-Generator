@@ -2,31 +2,41 @@
  * Browser setup for `@capacitor-community/sqlite`.
  *
  * On Android the plugin talks to native SQLite and none of this runs. In a browser it needs
- * `jeep-sqlite` — a custom element wrapping sql.js/WASM, backed by IndexedDB — and the element
- * has to be *defined and in the DOM* before `initWebStore()` is called.
+ * `jeep-sqlite` — a custom element wrapping sql.js/WASM, persisted through IndexedDB — defined and
+ * attached to the document before `initWebStore()` is called.
  *
- * Getting this wrong does not raise: `initWebStore()` simply never settles, so the app sits on a
- * spinner with a clean console. That is exactly what happened during the port, hence this file
- * and its rather emphatic comments.
+ * ## Two traps, both of which fail silently
  *
- * The `sql-wasm.wasm` binary is copied into `/assets` by an `angular.json` asset rule; without
- * it the element defines but cannot open a database.
+ * 1. **Use the custom-elements build, not the lazy loader.** `jeep-sqlite/loader` uses Stencil's
+ *    lazy runtime, which fetches the component's implementation chunk at runtime relative to the
+ *    loader's own script URL. Under Vite that URL is wrong, so the element gets *defined* with no
+ *    implementation behind it: `customElements.get('jeep-sqlite')` succeeds, the tag appears in
+ *    the DOM, and then every async method on it — including the one `initWebStore()` awaits —
+ *    never settles. No error is logged. Importing from `jeep-sqlite/dist/components/jeep-sqlite`
+ *    instead lets the bundler include the implementation directly.
+ *
+ * 2. **The `sql-wasm.wasm` version must match jeep-sqlite's bundled sql.js glue.** Serving a
+ *    newer one produces `LinkError: ... function import requires a callable` from
+ *    `WebAssembly.instantiate`. jeep-sqlite 2.8 wants sql.js 1.11.x, which is why `package.json`
+ *    pins it exactly rather than taking the latest. The binary is copied to `/assets` by a rule
+ *    in `angular.json`.
  */
 
 let setupPromise: Promise<void> | null = null;
 
 /**
- * Define `<jeep-sqlite>` and attach it to the document. Idempotent, and safe to call from
- * several places — the work happens once.
+ * Define `<jeep-sqlite>` and attach it to the document. Idempotent, and safe to call from several
+ * places at once — the work happens once.
  */
 export function prepareWebSqlite(): Promise<void> {
   if (setupPromise) return setupPromise;
 
   setupPromise = (async () => {
-    // Imported dynamically so the dependency never reaches an Android bundle.
-    const { defineCustomElements } = await import('jeep-sqlite/loader');
-    defineCustomElements(window);
-
+    // Imported dynamically so this never reaches an Android bundle.
+    const { defineCustomElement } = await import('jeep-sqlite/dist/components/jeep-sqlite');
+    if (!customElements.get('jeep-sqlite')) {
+      defineCustomElement();
+    }
     await customElements.whenDefined('jeep-sqlite');
 
     let element = document.querySelector('jeep-sqlite');
@@ -35,8 +45,8 @@ export function prepareWebSqlite(): Promise<void> {
       document.body.appendChild(element);
     }
 
-    // The element reports readiness through Stencil's lifecycle hook. Waiting on it is what
-    // stops `initWebStore` racing an element that has not booted its WASM yet.
+    // Stencil signals readiness through this hook. Waiting on it is what stops `initWebStore`
+    // racing an element whose WASM has not booted.
     const stencilElement = element as HTMLElement & { componentOnReady?: () => Promise<unknown> };
     if (typeof stencilElement.componentOnReady === 'function') {
       await stencilElement.componentOnReady();

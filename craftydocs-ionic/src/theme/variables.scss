@@ -1,0 +1,51 @@
+/* Design tokens, carried over from the React Native theme so the two trees look the same.
+   Ionic reads these CSS variables, which is how one palette drives every component. */
+
+:root {
+  /* Navy accent — the owner's house colour. */
+  --ion-color-primary: #0f4c81;
+  --ion-color-primary-rgb: 15, 76, 129;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0d4372;
+  --ion-color-primary-tint: #275e8e;
+
+  --ion-color-success: #0f7b4f;
+  --ion-color-success-rgb: 15, 123, 79;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-shade: #0d6c46;
+  --ion-color-success-tint: #278861;
+
+  --ion-color-warning: #9a6400;
+  --ion-color-warning-rgb: 154, 100, 0;
+  --ion-color-warning-contrast: #ffffff;
+  --ion-color-warning-shade: #885800;
+  --ion-color-warning-tint: #a4741a;
+
+  --ion-color-danger: #b3261e;
+  --ion-color-danger-rgb: 179, 38, 30;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-shade: #9e211a;
+  --ion-color-danger-tint: #bb3c35;
+
+  --ion-background-color: #f6f8fa;
+  --ion-background-color-rgb: 246, 248, 250;
+  --ion-text-color: #14181f;
+  --ion-text-color-rgb: 20, 24, 31;
+
+  --ion-card-background: #ffffff;
+  --ion-item-background: #ffffff;
+  --ion-toolbar-background: #0f4c81;
+  --ion-toolbar-color: #ffffff;
+
+  /* App-specific tokens the components read directly. */
+  --cd-ink-muted: #5a6472;
+  --cd-ink-faint: #8a93a1;
+  --cd-border: #dce2ea;
+  --cd-border-strong: #c3ccd8;
+  --cd-surface-alt: #f6f8fa;
+  --cd-surface-sunken: #eef1f5;
+
+  /* §11: minimum touch target. */
+  --cd-touch-target: 44px;
+}

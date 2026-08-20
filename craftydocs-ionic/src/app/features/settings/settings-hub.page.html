@@ -1,0 +1,30 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>More</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @for (group of groups; track group.heading) {
+    <ion-list inset="true">
+      <ion-list-header>{{ group.heading }}</ion-list-header>
+      @for (entry of group.entries; track entry.route) {
+        <ion-item button="true" detail="true" (click)="open(entry.route)">
+          <ion-label>
+            <h3>{{ entry.title }}</h3>
+            <p>{{ entry.subtitle }}</p>
+          </ion-label>
+        </ion-item>
+      }
+    </ion-list>
+  }
+
+  <div class="cd-centre">
+    <ion-note>
+      Version 1.0.0
+      @if (status().ready) {
+        · database v{{ status().schemaVersion }}
+      }
+    </ion-note>
+  </div>
+</ion-content>

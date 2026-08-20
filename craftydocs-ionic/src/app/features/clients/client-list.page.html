@@ -1,0 +1,61 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Clients</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="add()" aria-label="Add a client">
+        <ion-icon slot="icon-only" name="add-outline" />
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      placeholder="Search clients"
+      [debounce]="250"
+      (ionInput)="onSearch($any($event.target).value)"
+    />
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item lines="none">
+    <ion-toggle
+      [checked]="includeArchived()"
+      (ionChange)="onArchivedToggle($any($event.detail).checked)"
+    >
+      <ion-label>
+        <h3>Show archived clients</h3>
+        <p>Archived clients stay off the pickers but keep their old documents.</p>
+      </ion-label>
+    </ion-toggle>
+  </ion-item>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (clients().length === 0) {
+    <div class="cd-centre">
+      <p>No clients yet.</p>
+      <ion-note>Add a client once and reuse them on every document.</ion-note>
+    </div>
+  } @else {
+    <ion-list inset="true">
+      @for (client of clients(); track client.id) {
+        <ion-item button="true" (click)="open(client.id)">
+          <ion-label>
+            <h3>{{ client.company || client.name }}</h3>
+            @if (subtitle(client)) {
+              <p>{{ subtitle(client) }}</p>
+            }
+          </ion-label>
+          <div slot="end" class="cd-pills">
+            @if (client.archived) {
+              <ion-badge color="medium">Archived</ion-badge>
+            }
+            @if (client.gstin) {
+              <ion-badge color="primary">GST</ion-badge>
+            }
+          </div>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>

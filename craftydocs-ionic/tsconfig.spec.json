@@ -1,0 +1,9 @@
+/* Test-time TypeScript config. `node` types are needed because the date tests set
+   process.env.TZ to prove the calendar logic is timezone-proof. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/**/*.ts"]
+}

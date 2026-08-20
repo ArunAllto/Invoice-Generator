@@ -1,0 +1,72 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Documents</ion-title>
+    <ion-buttons slot="end">
+      <ion-note class="cd-sort" (click)="toggleSort()">
+        {{ sortBy() === 'date' ? 'By date' : 'By amount' }}
+      </ion-note>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      placeholder="Search number, client or item"
+      [debounce]="250"
+      (ionInput)="onSearch($any($event.target).value)"
+    />
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-segment [value]="typeFilter()" (ionChange)="onTypeChange($any($event.detail).value)">
+      <ion-segment-button value="all"><ion-label>All</ion-label></ion-segment-button>
+      <ion-segment-button value="quotation"><ion-label>Quotes</ion-label></ion-segment-button>
+      <ion-segment-button value="invoice"><ion-label>Invoices</ion-label></ion-segment-button>
+      <ion-segment-button value="receipt"><ion-label>Receipts</ion-label></ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="cd-chips">
+    @for (option of statusOptions; track option.value) {
+      <ion-chip
+        [outline]="statusFilter() !== option.value"
+        [color]="statusFilter() === option.value ? 'primary' : 'medium'"
+        (click)="onStatusChange(option.value)"
+      >
+        {{ option.label }}
+      </ion-chip>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (items().length === 0) {
+    <div class="cd-centre">
+      <p>No documents match this filter.</p>
+      <ion-note>Create one from the Home tab.</ion-note>
+    </div>
+  } @else {
+    <ion-list inset="true">
+      @for (item of items(); track item.id) {
+        <ion-item button="true" (click)="open(item.id)">
+          <ion-label>
+            <h3>{{ typeLabels[item.type] }} {{ item.number || '(draft)' }}</h3>
+            <p>{{ item.clientName || 'No client / walk-in' }} · {{ item.issueDate | isoDate }}</p>
+            @if (item.type === 'invoice' && item.balance > 0 && item.derivedStatus !== 'draft') {
+              <p class="cd-muted">Balance due {{ item.balance | paise: { decimals: false } }}</p>
+            }
+          </ion-label>
+          <div slot="end" class="cd-row-end">
+            <strong class="cd-amount">{{ item.grandTotal | paise: { decimals: false } }}</strong>
+            <div class="cd-pills">
+              <!-- §8.4: a duplicate number is warned about, never blocked. -->
+              @if (item.numberWarning) {
+                <ion-badge color="warning">Duplicate no.</ion-badge>
+              }
+              <cd-status-chip [status]="item.derivedStatus" />
+            </div>
+          </div>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>

@@ -1,0 +1,107 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>CraftyDocs</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  @if (error()) {
+    <ion-card color="danger">
+      <ion-card-content>
+        <p>Something went wrong loading your dashboard.</p>
+        <ion-note>{{ error() }}</ion-note>
+        <ion-button fill="clear" size="small" (click)="reload()">Try again</ion-button>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  <!-- §4.1: prompt until the business details exist, dismissible. -->
+  @if (profileIncomplete() && !bannerDismissed()) {
+    <ion-card>
+      <ion-card-content>
+        <p>Add your business details so they appear on every document.</p>
+        <ion-button fill="clear" size="small" (click)="openProfile()">Complete profile</ion-button>
+        <ion-button fill="clear" size="small" color="medium" (click)="bannerDismissed.set(true)">
+          Dismiss
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  <ion-button expand="block" size="large" [disabled]="busy()" (click)="create('quotation')">
+    <div class="cd-action">
+      <strong>New Quotation</strong>
+      <small>Estimate — no payment implied</small>
+    </div>
+  </ion-button>
+
+  <ion-button expand="block" size="large" [disabled]="busy()" (click)="create('invoice')">
+    <div class="cd-action">
+      <strong>New Invoice</strong>
+      <small>Bill — payment due</small>
+    </div>
+  </ion-button>
+
+  <ion-button expand="block" size="large" [disabled]="busy()" (click)="create('receipt')">
+    <div class="cd-action">
+      <strong>New Receipt</strong>
+      <small>Acknowledge a payment received</small>
+    </div>
+  </ion-button>
+
+  <ion-card>
+    <ion-card-content>
+      @if (summary(); as data) {
+        <div class="cd-summary">
+          <div>
+            <ion-text color="dark"><h2>{{ data.quotationsPending }}</h2></ion-text>
+            <ion-note>Quotations pending</ion-note>
+          </div>
+          <div>
+            <ion-text color="dark"><h2>{{ data.invoicesUnpaid }}</h2></ion-text>
+            <ion-note>Invoices unpaid</ion-note>
+          </div>
+          <div>
+            <ion-text color="primary">
+              <h2 class="cd-amount">{{ data.totalOutstanding | paise: { decimals: false } }}</h2>
+            </ion-text>
+            <ion-note>Total outstanding</ion-note>
+          </div>
+        </div>
+      } @else {
+        <ion-spinner name="dots" />
+      }
+    </ion-card-content>
+  </ion-card>
+
+  <div class="cd-section-title">Recent</div>
+
+  @if (summary(); as data) {
+    @if (data.recent.length === 0) {
+      <ion-card>
+        <ion-card-content>Nothing here yet. Create your first document above.</ion-card-content>
+      </ion-card>
+    } @else {
+      <ion-list inset="true">
+        @for (item of data.recent; track item.id) {
+          <ion-item button="true" (click)="openDocument(item.id)">
+            <ion-label>
+              <h3>{{ typeLabels[item.type] }} {{ item.number || '(draft)' }}</h3>
+              <p>{{ item.clientName || 'No client / walk-in' }} · {{ item.issueDate | isoDate }}</p>
+            </ion-label>
+            <div slot="end" class="cd-row-end">
+              <strong class="cd-amount">{{ item.grandTotal | paise: { decimals: false } }}</strong>
+              <cd-status-chip [status]="item.derivedStatus" />
+            </div>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  }
+
+  <ion-note class="cd-privacy">
+    CraftyDocs works entirely on this device. It has no analytics, no crash reporting and makes no
+    network calls of any kind. Your documents never leave the device unless you share them
+    yourself.
+  </ion-note>
+</ion-content>

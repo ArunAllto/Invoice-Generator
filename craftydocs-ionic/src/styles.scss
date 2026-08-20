@@ -1,0 +1,65 @@
+/* Ionic core, then the utilities we actually use, then our tokens.
+   Kept in this order so our variables win. */
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/normalize.css';
+@use '@ionic/angular/css/structure.css';
+@use '@ionic/angular/css/typography.css';
+@use '@ionic/angular/css/display.css';
+@use '@ionic/angular/css/padding.css';
+@use '@ionic/angular/css/flex-utils.css';
+@use 'theme/variables.scss';
+
+/* §11: every tappable control clears 44dp, and nothing that holds text has a fixed
+   height, so system font scaling grows rows instead of clipping them. */
+ion-button,
+ion-item[button],
+ion-tab-button {
+  min-height: var(--cd-touch-target);
+}
+
+.cd-muted { color: var(--cd-ink-muted); }
+.cd-amount { font-variant-numeric: tabular-nums; }
+.cd-required { color: var(--ion-color-danger); font-weight: 600; }
+
+/* Section label above a group of fields. */
+.cd-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--cd-ink-muted);
+  margin: 16px 4px 4px;
+}
+
+/* Shared list-screen bits, used by the documents and clients pages. */
+.cd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px 0;
+}
+
+.cd-centre {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.cd-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.cd-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.cd-sort {
+  padding-right: 12px;
+  font-size: 13px;
+  color: #fff;
+}

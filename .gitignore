@@ -15,3 +15,7 @@ coverage/
 
 expo-env.d.ts
 # @end expo-cli
+# Ionic Angular port
+craftydocs-ionic/node_modules/
+craftydocs-ionic/dist/
+craftydocs-ionic/.angular/

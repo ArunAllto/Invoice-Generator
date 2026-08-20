@@ -1,0 +1,22 @@
+@if (rows().length === 0) {
+  <ion-note class="cd-cf-note">
+    No extra fields declared. Add them in Settings → Extra fields.
+  </ion-note>
+} @else {
+  <ion-list>
+    @for (row of rows(); track row.def.id) {
+      <ion-item>
+        <ion-input
+          [label]="row.def.label"
+          labelPlacement="stacked"
+          [type]="inputType(row.def)"
+          [value]="row.value"
+          (ionBlur)="onValue(row.def, $any($event.target).value)"
+        />
+      </ion-item>
+    }
+  </ion-list>
+  <ion-note class="cd-cf-note">
+    Fields set to print appear on the document; the rest are only kept here.
+  </ion-note>
+}

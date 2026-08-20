@@ -19,7 +19,7 @@ import {
 import { ToastService } from '../../shared/ui/toast.service';
 
 /**
- * First run (§14).
+ * First run.
  *
  * ## Why this asks for so little
  *

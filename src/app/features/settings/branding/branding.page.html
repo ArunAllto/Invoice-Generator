@@ -74,6 +74,29 @@
     </ion-list>
 
     <ion-list inset="true">
+      <ion-list-header>Accent colour</ion-list-header>
+      <ion-item lines="none">
+        <div class="cd-accent-row">
+          @for (swatch of accents; track swatch) {
+            <button
+              type="button"
+              class="cd-accent-chip"
+              [class.cd-accent-chosen]="currentAccent() === swatch"
+              [style.background]="swatch"
+              [attr.aria-label]="'Use accent ' + swatch"
+              [attr.aria-pressed]="currentAccent() === swatch"
+              (click)="onAccent(swatch)"
+            ></button>
+          }
+        </div>
+      </ion-item>
+    </ion-list>
+    <ion-note class="cd-note">
+      Copied onto each new document, which can still override it. The Bold template is built around
+      this colour; the others use it for rules and headings.
+    </ion-note>
+
+    <ion-list inset="true">
       <ion-list-header>Template</ion-list-header>
       <ion-radio-group [value]="template()" (ionChange)="onTemplate($any($event.detail).value)">
         @for (option of templates; track option.value) {

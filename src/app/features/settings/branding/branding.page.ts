@@ -200,6 +200,39 @@ export class BrandingPage implements OnInit {
     }
   }
 
+  /**
+   * The accent colour copied onto every new document.
+   *
+   * It was seeded and used — the Bold template is built entirely around it — with no way to change
+   * it, so Bold was permanently navy. Offered as a fixed set rather than a colour wheel because
+   * these are picked to stay legible with white text on them, which an arbitrary hex is not.
+   */
+  readonly accents: readonly string[] = [
+    '#0F4C81',
+    '#0F6F75',
+    '#7A2F5F',
+    '#1D6B3F',
+    '#B3541E',
+    '#25292F',
+  ];
+
+  currentAccent(): string {
+    return this.profile()?.accentColor ?? '#0F4C81';
+  }
+
+  async onAccent(accentColor: string): Promise<void> {
+    const current = this.profile();
+    if (!current) return;
+    try {
+      const next: BusinessProfile = { ...current, accentColor };
+      await this.masters.saveBusinessProfile(next);
+      this.profile.set(next);
+      this.toast.success('New documents will use this colour.');
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
   async onTemplate(value: TemplateId): Promise<void> {
     const current = this.profile();
     if (!current) return;

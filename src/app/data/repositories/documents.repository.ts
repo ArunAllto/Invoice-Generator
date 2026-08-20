@@ -335,11 +335,11 @@ export class DocumentsRepository {
     const client = options.clientId ? await this.masters.getClient(options.clientId) : null;
 
     const validityDays = readDayCount(
-      await this.masters.getSetting('document.quotationValidityDays'),
+      await this.masters.getSetting(SETTINGS_KEYS.quotationValidityDays),
       15,
     );
-    const dueDays = readDayCount(await this.masters.getSetting('document.invoiceDueDays'), 15);
-    const storedBlocks = await this.masters.getSetting('document.defaultBlocks');
+    const dueDays = readDayCount(await this.masters.getSetting(SETTINGS_KEYS.invoiceDueDays), 15);
+    const storedBlocks = await this.masters.getSetting(SETTINGS_KEYS.defaultBlocks);
 
     const taxInference = inferTaxMode({
       businessGstin: business.gstin,
@@ -1155,6 +1155,22 @@ export class DocumentsRepository {
       nextSeq: series.nextSeq,
       resetRule: series.resetRule,
     };
+  }
+
+  /**
+   * Sequence numbers actually allocated to documents of this type (§8).
+   *
+   * Drafts are excluded because they hold no number at all (§8.3), which is the whole reason
+   * abandoning a draft leaves no gap. So a gap in this list means a number *was* allocated and the
+   * document was later deleted — the case worth surfacing, because a missing invoice number is the
+   * first thing a GST officer asks about.
+   */
+  async allocatedSequences(type: DocumentType): Promise<number[]> {
+    const rows = await this.db.query<{ seq: number }>(
+      "SELECT seq FROM documents WHERE type = ? AND seq IS NOT NULL AND status <> 'draft' ORDER BY seq;",
+      [type],
+    );
+    return rows.map((row) => row.seq);
   }
 
   /** Numbers already used by documents of this type, for the §8.4 duplicate warning. */

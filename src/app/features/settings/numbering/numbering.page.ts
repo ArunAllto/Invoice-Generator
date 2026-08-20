@@ -17,8 +17,14 @@ import {
 } from '@ionic/angular';
 
 import { todayIso } from '../../../core/dates';
-import { financialYearOf, formatFyToken, renderDocumentNumber } from '../../../core/numbering';
+import {
+  financialYearOf,
+  findSequenceGaps,
+  formatFyToken,
+  renderDocumentNumber,
+} from '../../../core/numbering';
 import type { DocumentType } from '../../../core/types';
+import { DocumentsRepository } from '../../../data/repositories/documents.repository';
 import { MastersRepository, type NumberingSeries } from '../../../data/repositories/masters.repository';
 import { ToastService } from '../../../shared/ui/toast.service';
 
@@ -62,6 +68,7 @@ const TYPE_LABELS: Readonly<Record<DocumentType, string>> = {
 })
 export class NumberingPage implements OnInit {
   private readonly masters = inject(MastersRepository);
+  private readonly documents = inject(DocumentsRepository);
   private readonly alerts = inject(AlertController);
   private readonly toast = inject(ToastService);
 
@@ -80,8 +87,31 @@ export class NumberingPage implements OnInit {
    */
   readonly financialYear = formatFyToken(financialYearOf(todayIso()), '2026-27');
 
+  /**
+   * Gaps in each series, by document type.
+   *
+   * §8 cares about this because a missing invoice number is the first thing a GST officer asks
+   * about, and by the time they ask it is far too late to remember why. Drafts are excluded — they
+   * hold no number at all (§8.3) — so a gap here means a number was allocated and the document later
+   * deleted or cancelled, which is exactly the case worth surfacing.
+   */
+  readonly gaps = signal<Record<string, number[]>>({});
+
   async ngOnInit(): Promise<void> {
     await this.reload();
+    await this.refreshGaps();
+  }
+
+  private async refreshGaps(): Promise<void> {
+    const found: Record<string, number[]> = {};
+    for (const type of this.types) {
+      found[type] = findSequenceGaps(await this.documents.allocatedSequences(type));
+    }
+    this.gaps.set(found);
+  }
+
+  gapsFor(type: DocumentType): number[] {
+    return this.gaps()[type] ?? [];
   }
 
   async reload(): Promise<void> {
@@ -174,6 +204,7 @@ export class NumberingPage implements OnInit {
     }
 
     try {
+      await this.refreshGaps();
       await this.masters.saveSeries({
         ...series,
         prefix: values['prefix'] ?? series.prefix,

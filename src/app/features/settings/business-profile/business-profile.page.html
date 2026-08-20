@@ -204,6 +204,21 @@
       </ion-accordion>
     </ion-accordion-group>
 
+    @if (customFieldDefs().length > 0) {
+      <ion-accordion-group>
+        <ion-accordion value="extra">
+          <ion-item slot="header" color="light"><ion-label>Extra fields</ion-label></ion-item>
+          <div slot="content">
+            <cd-custom-field-values
+              [definitions]="customFieldDefs()"
+              [values]="profile().customFields"
+              (changed)="onCustomFields($event)"
+            />
+          </div>
+        </ion-accordion>
+      </ion-accordion-group>
+    }
+
     <div class="cd-actions">
       <ion-button expand="block" [disabled]="saving()" (click)="save()">
         {{ saving() ? 'Saving…' : 'Save' }}

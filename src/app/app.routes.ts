@@ -18,7 +18,7 @@ import type { Routes } from '@angular/router';
 import { onboardingGuard } from './features/onboarding/onboarding.guard';
 
 export const routes: Routes = [
-  /** First run (§14). Not guarded — this is where the guard sends people. */
+  /** First run. Not guarded — this is where the guard sends people. */
   {
     path: 'onboarding',
     loadComponent: () =>

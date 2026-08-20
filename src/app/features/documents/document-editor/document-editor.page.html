@@ -668,7 +668,23 @@
         </div>
       </ion-accordion>
 
-      <!-- 8. Notes -->
+      <!-- 8. Extra fields (§7.7). Only shown when the owner has declared any. -->
+      @if (customFieldDefs().length > 0) {
+        <ion-accordion value="extra">
+          <ion-item slot="header" color="light">
+            <ion-label>Extra fields</ion-label>
+          </ion-item>
+          <div slot="content">
+            <cd-custom-field-values
+              [definitions]="customFieldDefs()"
+              [values]="document()!.customFields"
+              (changed)="onCustomFields($event)"
+            />
+          </div>
+        </ion-accordion>
+      }
+
+      <!-- 9. Notes -->
       <ion-accordion value="notes">
         <ion-item slot="header" color="light">
           <ion-label>Notes</ion-label>
@@ -686,7 +702,7 @@
         </div>
       </ion-accordion>
 
-      <!-- 9. Terms -->
+      <!-- 10. Terms -->
       <ion-accordion value="terms">
         <ion-item slot="header" color="light">
           <ion-label>Terms &amp; conditions</ion-label>

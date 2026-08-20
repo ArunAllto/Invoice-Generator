@@ -19,7 +19,13 @@ import {
 } from '@ionic/angular';
 
 import { validateGstin } from '../../../core/gst';
-import { MastersRepository, type Client } from '../../../data/repositories/masters.repository';
+import type { CustomFieldValue } from '../../../core/types';
+import {
+  MastersRepository,
+  type Client,
+  type CustomFieldDef,
+} from '../../../data/repositories/masters.repository';
+import { CustomFieldValuesComponent } from '../../../shared/ui/custom-fields/custom-field-values.component';
 import { ToastService } from '../../../shared/ui/toast.service';
 
 /**
@@ -52,6 +58,7 @@ import { ToastService } from '../../../shared/ui/toast.service';
     IonToggle,
     IonNote,
     IonSpinner,
+    CustomFieldValuesComponent,
   ],
   templateUrl: './client-editor.page.html',
   styleUrl: './client-editor.page.scss',
@@ -113,7 +120,15 @@ export class ClientEditorPage implements OnInit {
         this.toast.warning('That client no longer exists. Starting a new one.');
       }
     }
+    this.customFieldDefs.set(await this.masters.listCustomFieldDefs('client'));
     this.loading.set(false);
+  }
+
+  /** The client-scoped definitions the owner declared (§7.7). */
+  readonly customFieldDefs = signal<CustomFieldDef[]>([]);
+
+  onCustomFields(customFields: CustomFieldValue[]): void {
+    this.patch('customFields', customFields);
   }
 
   patch<K extends keyof Client>(key: K, value: Client[K]): void {

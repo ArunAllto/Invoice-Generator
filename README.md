@@ -33,6 +33,7 @@ src/
 │   │   ├── number-to-words-indian.ts   lakh/crore amount in words (§9.5)
 │   │   ├── status.ts             the §6.4 state machine — derived, never stored
 │   │   ├── qr.ts                 hand-written QR encoder (§7.6)
+│   │   ├── page-size.ts          paper geometry: presets, clamping, CSS @page (§10.1)
 │   │   ├── dates.ts              dates as text, so timezones cannot shift them
 │   │   ├── ids.ts, types.ts
 │   │   └── *.spec.ts             293 tests
@@ -51,7 +52,8 @@ src/
 │   ├── render/
 │   │   ├── html.ts               THE single source of document output (§10.1)
 │   │   ├── adapt.ts              stored document → renderer input; type-only imports, so pure
-│   │   └── upi-qr.ts             the payment QR, shared by preview and every export path
+│   │   ├── upi-qr.ts             the payment QR, shared by preview and every export path
+│   │   └── render-settings.service.ts  print preferences every render path shares
 │   ├── export/
 │   │   ├── filename.ts           export filename rules (§10.2)
 │   │   └── export.service.ts     print, save-as-HTML, share (§10.2, §10.5)
@@ -90,7 +92,8 @@ src/
 │   │       ├── custom-fields/    fields the owner declares
 │   │       ├── defaults/         validity, due days, date style
 │   │       ├── backup/           backup, restore, erase
-│   │       ├── appearance/       appearance.page.{ts,html,scss}
+│   │       ├── page-size/        paper size and margins
+│   │       ├── appearance/       theme, accent, text size
 │   │       ├── about/            about.page.{ts,html,scss}
 │   │       └── not-found/        not-found.page.{ts,html,scss}
 │   │
@@ -229,7 +232,17 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Deletion (§6.7) | Working: documents from the editor and by swiping a list row, clients by swiping; §6.4 refuses an issued receipt and offers cancellation instead |
 | Clearable Recent (§4.1) | Working: hides rows without deleting anything, reversible, and deliberately does not filter the outstanding totals |
 | Appearance | Working: theme, accent colour (light- and dark-ground variants each) and text size, all persisted and applied before first paint |
-| Onboarding (§14) | Working: four fields on first run, skippable, guarded so a restored backup does not re-run it |
+| Onboarding | Working: four fields on first run, skippable, guarded so a restored backup does not re-run it |
+| **Document size (§10.1)** | Working: A4 / Letter / Legal / A5 / custom, margins on any of them, with pagination *derived* from the sheet |
+| Quotation → invoice (§6.8) | Working: copies items and rates, links both ways, leaves the quotation untouched, refuses a second invoice |
+| Duplicate a document | Working: fresh draft, fresh snapshots and line ids, no number reserved |
+| Custom field values (§7.7) | Working: entry on documents, clients and the business profile; values with no definition are preserved, not dropped |
+| Payment method and notes (§6.5) | Working: all six methods, shown on each payment row |
+| Per-document template, accent and currency (§10.6, §9.1) | Working, overriding the profile default |
+| Business accent colour | Working: six presets, copied onto new documents |
+| Numbering gap report (§8) | Working: shows allocated-then-deleted numbers per type |
+| Price mode (§7.3) | Working: ask / always / never on a catalogue price edit |
+| Preferred export format | Working: orders the export sheet, hides nothing |
 | **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override, client picker |
 | Payments and receipts (§6.5) | Working: record and delete payments, derived part-paid / paid, raise a receipt from a payment |
 | Status lifecycle (§6.4) | Working: buttons generated from the transition table, so cancel is offered wherever the domain allows it |
@@ -238,9 +251,11 @@ and it needs the Android SDK and JDK 17 installed locally.
 
 | Gap | Effect |
 |---|---|
-| PDF / DOCX / PNG as a *file* (§10.3, §10.4) | The print dialogue produces a real PDF and the HTML export is self-contained, so the document can be delivered today. A generated PDF byte stream, a Word file, and one PNG per page each need a library — `pdf-lib`, `docx`, a canvas rasteriser — and `render/html.ts` already accepts `pixelWidth` and `onlyPage` for the image path. |
-| Font embedding (§10.1) | The export uses the platform font stack, so a machine without Noto Sans substitutes. `RenderOptions.fontCss` is the seam an embedded `@font-face` plugs into; it needs a licensed font file committed to the repo. |
+| PDF / DOCX / PNG as a generated *file* (§10.3, §10.4) | The print dialogue produces a real PDF and the HTML export is self-contained, so a document can be delivered today. A PDF byte stream, a Word file and one PNG per page each need a library — `pdf-lib`, `docx`, a canvas rasteriser — and `render/html.ts` already accepts `pixelWidth` and `onlyPage` for the image path. |
+| Font embedding (§10.1) | The export uses the platform font stack, so a machine without Noto Sans substitutes. `RenderOptions.fontCss` is the seam; it needs a licensed font file committed to the repo. |
+| Currency conversion | The currency picker changes the symbol and the digit grouping. Amounts are not converted — deliberately, since a stored rate would go stale and silently misstate a total. |
 | Android build (§12) | Nothing has run on a device. `npm i @capacitor/android` then `npx cap add android`. |
+| Overlay presentation untested | Every alert and action sheet is driven by verified handlers, but the Browser pane used for testing does not composite frames, so no dialog has been seen to open. |
 
 ### Dependencies
 

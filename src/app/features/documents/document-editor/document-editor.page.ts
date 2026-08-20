@@ -77,6 +77,7 @@ import type {
   PaymentMethod,
   TaxMode,
   TemplateId,
+  CustomFieldValue,
 } from '../../../core/types';
 import { todayIso } from '../../../core/dates';
 import type {
@@ -88,10 +89,12 @@ import { DocumentsRepository } from '../../../data/repositories/documents.reposi
 import {
   MastersRepository,
   SETTINGS_KEYS,
+  type CustomFieldDef,
   type TaxPreset,
 } from '../../../data/repositories/masters.repository';
 import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
 import { PaisePipe } from '../../../shared/pipes/paise.pipe';
+import { CustomFieldValuesComponent } from '../../../shared/ui/custom-fields/custom-field-values.component';
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { buildExportFilename } from '../../../export/filename';
@@ -135,6 +138,7 @@ import { DocumentEditorStore } from '../document-editor.store';
     PaisePipe,
     IsoDatePipe,
     StatusChipComponent,
+    CustomFieldValuesComponent,
   ],
   templateUrl: './document-editor.page.html',
   styleUrl: './document-editor.page.scss',
@@ -235,6 +239,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await this.refreshNumberPreview();
     await this.refreshPayments();
     await this.refreshRelated();
+    this.customFieldDefs.set(await this.masters.listCustomFieldDefs('document'));
   }
 
   /** §6.3: flush on leaving, so the draft is intact even if the app is killed straight after. */
@@ -363,15 +368,25 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     const wasAuto = line.priceSource === 'auto' && line.catalogueItemId !== null;
     this.store.patchLine(line.id, { rate: parsed });
 
-    if (wasAuto && line.catalogueItemId) {
-      await this.offerCatalogueWriteBack(line.catalogueItemId, parsed);
+    if (!wasAuto || !line.catalogueItemId) return;
+
+    // §7.3's price mode, which until now was a settings key nothing read.
+    const mode = await this.masters.getSetting(SETTINGS_KEYS.priceMode);
+    if (mode === 'never') return;
+    if (mode === 'always') {
+      await this.masters.updateCatalogueRate(line.catalogueItemId, parsed);
+      this.toast.success('Catalogue price updated.');
+      return;
     }
+    await this.offerCatalogueWriteBack(line.catalogueItemId, parsed);
   }
 
   /**
-   * §7.3's explicit write-back prompt.
+   * §7.3's explicit write-back prompt — the default price mode.
    *
-   * Never silent: the catalogue price only changes if the owner says so here.
+   * Never silent by default: the catalogue price only changes if the owner says so here. The other
+   * two modes exist because this prompt is right for someone whose prices are stable and wrong for
+   * someone repricing constantly, and being asked on every edit is its own kind of friction.
    */
   private async offerCatalogueWriteBack(catalogueItemId: string, rate: number): Promise<void> {
     const alert = await this.alerts.create({
@@ -822,6 +837,17 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   }
 
   // -------------------------------------------------------------------------
+  // Extra fields (§7.7)
+  // -------------------------------------------------------------------------
+
+  /** The document-scoped definitions the owner declared. */
+  readonly customFieldDefs = signal<CustomFieldDef[]>([]);
+
+  onCustomFields(customFields: CustomFieldValue[]): void {
+    this.store.patchDocument({ customFields });
+  }
+
+  // -------------------------------------------------------------------------
   // Copying, converting and linking (§6.8)
   // -------------------------------------------------------------------------
 
@@ -1005,13 +1031,28 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     const doc = this.document();
     if (!doc) return;
 
-    const buttons: Array<{ text: string; role?: 'cancel' | 'destructive'; handler?: () => void }> = [
-      { text: 'Print or save as PDF', handler: () => void this.exportPrint() },
-      { text: 'Save as an HTML file', handler: () => void this.exportHtml() },
+    const canShare = this.exports.canShareFiles || this.exports.canShareText;
+    const choices: Array<{
+      key: string;
+      text: string;
+      handler: () => void;
+      available: boolean;
+    }> = [
+      { key: 'print', text: 'Print or save as PDF', handler: () => void this.exportPrint(), available: true },
+      { key: 'html', text: 'Save as an HTML file', handler: () => void this.exportHtml(), available: true },
+      { key: 'share', text: 'Share…', handler: () => void this.exportShare(), available: canShare },
     ];
-    if (this.exports.canShareFiles || this.exports.canShareText) {
-      buttons.push({ text: 'Share…', handler: () => void this.exportShare() });
-    }
+
+    // The owner's preferred format is listed first; the rest keep their order behind it. Nothing is
+    // hidden — a preference should change what is easiest to reach, not what is possible.
+    const preferred = await this.masters.getSetting(SETTINGS_KEYS.defaultExportFormat);
+    const ordered = [
+      ...choices.filter((choice) => choice.key === preferred && choice.available),
+      ...choices.filter((choice) => choice.key !== preferred && choice.available),
+    ];
+
+    const buttons: Array<{ text: string; role?: 'cancel' | 'destructive'; handler?: () => void }> =
+      ordered.map((choice) => ({ text: choice.text, handler: choice.handler }));
     buttons.push({ text: 'Open the full preview', handler: () => void this.openPreview() });
     buttons.push({ text: 'Cancel', role: 'cancel' });
 

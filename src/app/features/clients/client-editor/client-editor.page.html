@@ -123,6 +123,15 @@
       <ion-note color="warning" class="cd-note">{{ gstinWarning() }}</ion-note>
     }
 
+    @if (customFieldDefs().length > 0) {
+      <div class="cd-section-title">Extra fields</div>
+      <cd-custom-field-values
+        [definitions]="customFieldDefs()"
+        [values]="client()!.customFields"
+        (changed)="onCustomFields($event)"
+      />
+    }
+
     <div class="cd-section-title">Notes</div>
     <ion-list inset="true">
       <ion-item>

@@ -18,11 +18,14 @@ import {
 } from '@ionic/angular';
 
 import { validateGstin } from '../../../core/gst';
+import type { CustomFieldValue } from '../../../core/types';
 import {
   EMPTY_BUSINESS,
   MastersRepository,
   type BusinessProfile,
+  type CustomFieldDef,
 } from '../../../data/repositories/masters.repository';
+import { CustomFieldValuesComponent } from '../../../shared/ui/custom-fields/custom-field-values.component';
 import { ToastService } from '../../../shared/ui/toast.service';
 
 /**
@@ -55,6 +58,7 @@ import { ToastService } from '../../../shared/ui/toast.service';
     IonInput,
     IonNote,
     IonSpinner,
+    CustomFieldValuesComponent,
   ],
   templateUrl: './business-profile.page.html',
   styleUrl: './business-profile.page.scss',
@@ -86,7 +90,15 @@ export class BusinessProfilePage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.profile.set(await this.masters.getBusinessProfile());
+    this.customFieldDefs.set(await this.masters.listCustomFieldDefs('business'));
     this.loading.set(false);
+  }
+
+  /** The business-scoped definitions the owner declared (§7.7). */
+  readonly customFieldDefs = signal<CustomFieldDef[]>([]);
+
+  onCustomFields(customFields: CustomFieldValue[]): void {
+    this.patch('customFields', customFields);
   }
 
   /** Patch one field. Kept generic so the template stays declarative. */

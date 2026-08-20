@@ -34,6 +34,20 @@
             <ion-label class="cd-muted">No series set up for these yet.</ion-label>
           </ion-item>
         }
+
+        <!-- §8: a missing invoice number is the first thing a GST officer asks about. -->
+        @if (gapsFor(type).length > 0) {
+          <ion-item lines="none">
+            <ion-label class="ion-text-wrap">
+              <h3 class="cd-gap-title">Missing numbers</h3>
+              <p>{{ gapsFor(type).join(', ') }}</p>
+              <p class="cd-muted">
+                These were allocated and then deleted or cancelled. Keep the cancelled documents
+                rather than deleting them, so the sequence can be explained.
+              </p>
+            </ion-label>
+          </ion-item>
+        }
       </ion-list>
     }
   }

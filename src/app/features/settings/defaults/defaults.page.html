@@ -62,6 +62,45 @@
       </ion-radio-group>
     </ion-list>
 
+    <ion-list inset="true">
+      <ion-list-header>Editing a catalogue price</ion-list-header>
+      <ion-radio-group [value]="priceMode()" (ionChange)="onPriceMode($any($event.detail).value)">
+        @for (mode of priceModes; track mode.value) {
+          <ion-item>
+            <ion-radio [value]="mode.value" labelPlacement="end" justify="start">
+              <ion-label class="ion-text-wrap">
+                <h3>{{ mode.label }}</h3>
+                <p>{{ mode.hint }}</p>
+              </ion-label>
+            </ion-radio>
+          </ion-item>
+        }
+      </ion-radio-group>
+    </ion-list>
+    <!-- §7.3: existing documents are never touched, whichever mode is chosen. -->
+    <ion-note class="cd-note">
+      Whichever you choose, documents already written keep the price they were given.
+    </ion-note>
+
+    <ion-list inset="true">
+      <ion-list-header>Preferred export</ion-list-header>
+      <ion-radio-group [value]="exportFormat()" (ionChange)="onExportFormat($any($event.detail).value)">
+        @for (format of exportFormats; track format.value) {
+          <ion-item>
+            <ion-radio [value]="format.value" labelPlacement="end" justify="start">
+              <ion-label class="ion-text-wrap">
+                <h3>{{ format.label }}</h3>
+                <p>{{ format.hint }}</p>
+              </ion-label>
+            </ion-radio>
+          </ion-item>
+        }
+      </ion-radio-group>
+    </ion-list>
+    <ion-note class="cd-note">
+      Listed first on the export sheet. The others are always still there.
+    </ion-note>
+
     <div class="cd-actions">
       <ion-button expand="block" [disabled]="saving()" (click)="save()">
         {{ saving() ? 'Saving…' : 'Save' }}

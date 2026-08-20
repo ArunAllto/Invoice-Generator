@@ -167,12 +167,17 @@ export interface CustomFieldDef {
   position: number;
 }
 
-/** Well-known settings keys, so they are not scattered as string literals. */
+/**
+ * Well-known settings keys, so they are not scattered as string literals.
+ *
+ * Two entries were removed once their owners became clear: the last-used template belongs to
+ * `business_profile.default_template_id`, and the theme has to be readable before the first paint so
+ * it lives in `localStorage` (see `ThemeService`). A key nothing reads is worse than no key — it
+ * reads as a feature that exists.
+ */
 export const SETTINGS_KEYS = {
   defaultExportFormat: 'export.defaultFormat',
-  lastTemplate: 'export.lastTemplate',
   priceMode: 'editor.priceMode',
-  theme: 'app.theme',
   onboardingComplete: 'app.onboardingComplete',
   defaultBlocks: 'document.defaultBlocks',
   quotationValidityDays: 'document.quotationValidityDays',

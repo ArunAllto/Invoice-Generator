@@ -12,3 +12,9 @@
   font-weight: 600;
   color: var(--cd-accent);
 }
+
+/* Missing numbers are a warning, not an error: the sequence is explainable, but only if the
+   cancelled documents are kept. */
+.cd-gap-title {
+  color: var(--cd-warning);
+}

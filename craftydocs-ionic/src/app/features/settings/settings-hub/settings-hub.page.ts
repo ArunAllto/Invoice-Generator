@@ -21,7 +21,7 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 
-import { SqliteService } from '../../data/sqlite.service';
+import { SqliteService } from '../../../data/sqlite.service';
 
 interface SettingsEntry {
   title: string;
@@ -49,6 +49,7 @@ interface SettingsGroup {
     IonNote,
   ],
   templateUrl: './settings-hub.page.html',
+  styleUrl: './settings-hub.page.scss',
 })
 export class SettingsHubPage {
   private readonly router = inject(Router);

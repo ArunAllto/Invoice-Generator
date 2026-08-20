@@ -1,0 +1,5 @@
+<!--
+  Takes the *derived* status, never the stored one (§6.4), and maps it through the core's
+  `statusTone` so the colour semantics live in exactly one place.
+-->
+<ion-badge [color]="color()">{{ label() }}</ion-badge>

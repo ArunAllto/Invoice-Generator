@@ -28,7 +28,7 @@ import {
 import { addIcons } from 'ionicons';
 import { addOutline } from 'ionicons/icons';
 
-import { MastersRepository, type Client } from '../../data/repositories/masters.repository';
+import { MastersRepository, type Client } from '../../../data/repositories/masters.repository';
 
 @Component({
   selector: 'app-client-list',
@@ -51,6 +51,7 @@ import { MastersRepository, type Client } from '../../data/repositories/masters.
     IonSpinner,
   ],
   templateUrl: './client-list.page.html',
+  styleUrl: './client-list.page.scss',
 })
 export class ClientListPage implements OnInit, ViewWillEnter {
   private readonly masters = inject(MastersRepository);

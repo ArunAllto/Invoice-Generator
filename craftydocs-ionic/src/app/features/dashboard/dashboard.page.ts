@@ -33,8 +33,9 @@ import {
   type DashboardSummary,
 } from '../../data/repositories/documents.repository';
 import { MastersRepository } from '../../data/repositories/masters.repository';
-import { IsoDatePipe, PaisePipe } from '../../shared/pipes/format.pipes';
-import { StatusChipComponent } from '../../shared/ui/status-chip.component';
+import { IsoDatePipe } from '../../shared/pipes/iso-date.pipe';
+import { PaisePipe } from '../../shared/pipes/paise.pipe';
+import { StatusChipComponent } from '../../shared/ui/status-chip/status-chip.component';
 
 const TYPE_LABELS: Record<DocumentType, string> = {
   quotation: 'Quotation',

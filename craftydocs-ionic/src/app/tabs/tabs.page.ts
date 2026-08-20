@@ -1,11 +1,3 @@
-/**
- * The four tabs of §4: Home, Documents, Clients, More.
- *
- * Labels are always visible. `ion-tab-button` inherits the 44dp minimum from global styles, and
- * nothing here fixes a height, so a larger system font grows the bar instead of clipping the
- * labels — which is the defect the React Native tree had to fix at 48dp.
- */
-
 import { Component } from '@angular/core';
 import {
   IonIcon,
@@ -18,36 +10,19 @@ import {
 import { addIcons } from 'ionicons';
 import { documentTextOutline, ellipsisHorizontal, homeOutline, peopleOutline } from 'ionicons/icons';
 
+/**
+ * The tab shell of §4. Each tab's content is a lazily loaded child route.
+ */
 @Component({
   selector: 'app-tabs',
   standalone: true,
   imports: [IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonRouterOutlet],
-  template: `
-    <ion-tabs>
-      <ion-router-outlet />
-      <ion-tab-bar slot="bottom">
-        <ion-tab-button tab="home">
-          <ion-icon name="home-outline" />
-          <ion-label>Home</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="documents">
-          <ion-icon name="document-text-outline" />
-          <ion-label>Documents</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="clients">
-          <ion-icon name="people-outline" />
-          <ion-label>Clients</ion-label>
-        </ion-tab-button>
-        <ion-tab-button tab="more">
-          <ion-icon name="ellipsis-horizontal" />
-          <ion-label>More</ion-label>
-        </ion-tab-button>
-      </ion-tab-bar>
-    </ion-tabs>
-  `,
+  templateUrl: './tabs.page.html',
+  styleUrl: './tabs.page.scss',
 })
 export class TabsPage {
   constructor() {
+    // Registering only the icons actually used keeps them out of the initial bundle.
     addIcons({ homeOutline, documentTextOutline, peopleOutline, ellipsisHorizontal });
   }
 }

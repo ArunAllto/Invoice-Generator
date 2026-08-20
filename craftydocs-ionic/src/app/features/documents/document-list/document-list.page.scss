@@ -1,0 +1,39 @@
+/* The status filter strip above the list. Wraps rather than scrolls, so no filter is hidden
+   off-screen on a narrow phone. */
+.cd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px 0;
+}
+
+/* Amount above the status pills, right-aligned against the row's trailing edge. */
+.cd-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.cd-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.cd-amount {
+  /* Tabular figures so amounts line up down the column. */
+  font-variant-numeric: tabular-nums;
+}
+
+.cd-sort {
+  padding-right: 12px;
+  font-size: 13px;
+  color: #fff;
+}
+
+.cd-centre {
+  padding: 32px 16px;
+  text-align: center;
+}

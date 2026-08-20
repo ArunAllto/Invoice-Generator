@@ -31,13 +31,14 @@ import {
   type ViewWillEnter,
 } from '@ionic/angular';
 
-import type { DocumentStatus, DocumentType } from '../../core/types';
+import type { DocumentStatus, DocumentType } from '../../../core/types';
 import {
   DocumentsRepository,
   type DocumentListItem,
-} from '../../data/repositories/documents.repository';
-import { IsoDatePipe, PaisePipe } from '../../shared/pipes/format.pipes';
-import { StatusChipComponent } from '../../shared/ui/status-chip.component';
+} from '../../../data/repositories/documents.repository';
+import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
+import { PaisePipe } from '../../../shared/pipes/paise.pipe';
+import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 
 type TypeFilter = 'all' | DocumentType;
 type StatusFilter = 'all' | DocumentStatus;
@@ -72,6 +73,7 @@ const TYPE_LABELS: Record<DocumentType, string> = {
     StatusChipComponent,
   ],
   templateUrl: './document-list.page.html',
+  styleUrl: './document-list.page.scss',
 })
 export class DocumentListPage implements OnInit, ViewWillEnter {
   private readonly documents = inject(DocumentsRepository);

@@ -42,7 +42,7 @@ import {
 import { addIcons } from 'ionicons';
 import { arrowDownOutline, arrowUpOutline, closeOutline } from 'ionicons/icons';
 
-import { isGstEnabled } from '../../core/gst';
+import { isGstEnabled } from '../../../core/gst';
 import {
   formatBasisPoints,
   formatMilli,
@@ -50,17 +50,17 @@ import {
   parseCurrencyToPaise,
   parsePercentToBasisPoints,
   parseQuantityToMilli,
-} from '../../core/money';
-import { isDuplicateNumber, previewNextNumber } from '../../core/numbering';
-import { deriveStatus, isEditable, statusLabel } from '../../core/status';
-import type { DiscountMode, DocumentStatus, TaxMode } from '../../core/types';
-import { todayIso } from '../../core/dates';
-import type { LineItem } from '../../data/repositories/documents.repository';
-import { DocumentsRepository } from '../../data/repositories/documents.repository';
-import { MastersRepository, type TaxPreset } from '../../data/repositories/masters.repository';
-import { PaisePipe } from '../../shared/pipes/format.pipes';
-import { StatusChipComponent } from '../../shared/ui/status-chip.component';
-import { DocumentEditorStore } from './document-editor.store';
+} from '../../../core/money';
+import { isDuplicateNumber, previewNextNumber } from '../../../core/numbering';
+import { deriveStatus, isEditable, statusLabel } from '../../../core/status';
+import type { DiscountMode, DocumentStatus, TaxMode } from '../../../core/types';
+import { todayIso } from '../../../core/dates';
+import type { LineItem } from '../../../data/repositories/documents.repository';
+import { DocumentsRepository } from '../../../data/repositories/documents.repository';
+import { MastersRepository, type TaxPreset } from '../../../data/repositories/masters.repository';
+import { PaisePipe } from '../../../shared/pipes/paise.pipe';
+import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import { DocumentEditorStore } from '../document-editor.store';
 
 @Component({
   selector: 'app-document-editor',

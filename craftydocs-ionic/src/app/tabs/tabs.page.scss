@@ -1,0 +1,10 @@
+/* §11: the label must never be clipped, whatever the system font size.
+   An explicit line-height is the fix — with only a font-size the label's line box can come out
+   shorter than the glyphs and the descender in "Documents" gets cut. */
+
+ion-tab-button {
+  ion-label {
+    font-size: 12px;
+    line-height: 16px;
+  }
+}

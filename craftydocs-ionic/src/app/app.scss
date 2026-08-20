@@ -1,0 +1,8 @@
+/* The root shell owns no visual styling of its own — page-level appearance belongs to each
+   component, and app-wide rules live in src/styles.scss so Ionic's variables can be overridden
+   in one place. Kept as a file so the component follows the same ts/html/scss shape as the rest. */
+
+:host {
+  display: block;
+  height: 100%;
+}

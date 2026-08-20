@@ -1,0 +1,10 @@
+:host {
+  display: inline-flex;
+}
+
+ion-badge {
+  font-size: 11px;
+  font-weight: 600;
+  /* Long labels such as "Part paid" must stay on one line inside a list row. */
+  white-space: nowrap;
+}

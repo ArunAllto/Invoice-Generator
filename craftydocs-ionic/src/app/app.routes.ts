@@ -22,15 +22,15 @@ export const routes: Routes = [
       {
         path: 'documents',
         loadComponent: () =>
-          import('./features/documents/document-list.page').then((m) => m.DocumentListPage),
+          import('./features/documents/document-list/document-list.page').then((m) => m.DocumentListPage),
       },
       {
         path: 'clients',
-        loadComponent: () => import('./features/clients/client-list.page').then((m) => m.ClientListPage),
+        loadComponent: () => import('./features/clients/client-list/client-list.page').then((m) => m.ClientListPage),
       },
       {
         path: 'more',
-        loadComponent: () => import('./features/settings/settings-hub.page').then((m) => m.SettingsHubPage),
+        loadComponent: () => import('./features/settings/settings-hub/settings-hub.page').then((m) => m.SettingsHubPage),
       },
       { path: '', redirectTo: 'home', pathMatch: 'full' },
     ],
@@ -42,7 +42,7 @@ export const routes: Routes = [
   {
     path: 'document/:id',
     loadComponent: () =>
-      import('./features/documents/document-editor.page').then((m) => m.DocumentEditorPage),
+      import('./features/documents/document-editor/document-editor.page').then((m) => m.DocumentEditorPage),
   },
   { path: '', redirectTo: 'tabs/home', pathMatch: 'full' },
   { path: '**', redirectTo: 'tabs/home' },

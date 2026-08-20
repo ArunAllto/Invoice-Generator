@@ -1,21 +1,22 @@
-/**
- * The status pill used on every document row (§6.4).
- *
- * Takes the *derived* status, not the stored one, and maps it through the core's `statusTone` so
- * the colour semantics live in one place.
- */
-
 import { Component, computed, input } from '@angular/core';
 import { IonBadge } from '@ionic/angular';
 
-import { statusLabel, statusTone } from '../../core/status';
-import type { DocumentStatus } from '../../core/types';
+import { statusLabel, statusTone } from '../../../core/status';
+import type { DocumentStatus } from '../../../core/types';
 
+/**
+ * The status pill used on every document row (§6.4).
+ *
+ * It maps a status to a colour but decides nothing itself: both the label and the tone come from
+ * the pure `core/status` module, so the app cannot end up with two disagreeing opinions about what
+ * "overdue" looks like.
+ */
 @Component({
   selector: 'cd-status-chip',
   standalone: true,
   imports: [IonBadge],
-  template: `<ion-badge [color]="color()">{{ label() }}</ion-badge>`,
+  templateUrl: './status-chip.component.html',
+  styleUrl: './status-chip.component.scss',
 })
 export class StatusChipComponent {
   readonly status = input.required<DocumentStatus>();

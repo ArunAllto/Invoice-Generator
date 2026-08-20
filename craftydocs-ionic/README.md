@@ -18,45 +18,69 @@ shown*, which is what made this port cheap in the first place.
 ```
 src/
 ├── app/
-│   ├── core/                     PURE domain logic. No Angular, no Ionic, no Capacitor.
-│   │   ├── money.ts              integer paise arithmetic; the ONLY decimal parser (§16.5)
+│   ├── app.ts / app.html / app.scss        root shell
+│   ├── app.routes.ts                       lazy route table
+│   ├── app.config.ts                       providers
+│   │
+│   ├── core/                     PURE domain logic. No Angular, Ionic or Capacitor.
+│   │   ├── money.ts              integer paise; the ONLY decimal parser (§16.5)
 │   │   ├── calc.ts               every calculation rule in §9
-│   │   ├── gst.ts                GSTIN validation, CGST/SGST vs IGST inference (§9.4)
-│   │   ├── numbering.ts          document numbers, financial year, gap detection (§8)
+│   │   ├── gst.ts                GSTIN validation, CGST/SGST vs IGST (§9.4)
+│   │   ├── numbering.ts          document numbers, financial year, gaps (§8)
 │   │   ├── number-to-words-indian.ts   lakh/crore amount in words (§9.5)
 │   │   ├── status.ts             the §6.4 state machine — derived, never stored
-│   │   ├── qr.ts                 hand-written QR encoder, no dependency, no network (§7.6)
-│   │   ├── dates.ts              calendar dates as text, so timezones cannot shift them
-│   │   ├── ids.ts                UUIDs
-│   │   ├── types.ts              the domain vocabulary
+│   │   ├── qr.ts                 hand-written QR encoder (§7.6)
+│   │   ├── dates.ts              dates as text, so timezones cannot shift them
+│   │   ├── ids.ts, types.ts
 │   │   └── *.spec.ts             293 tests
+│   │
 │   ├── data/                     persistence
-│   │   ├── schema.ts             SQL + append-only migration list (§5, §16.4)
-│   │   ├── sqlite.service.ts     the one connection; migration runner; query/run/transaction
+│   │   ├── schema.ts             SQL + append-only migrations (§5, §16.4)
+│   │   ├── sqlite.service.ts     one connection; migrations; query/run/transaction
 │   │   ├── web-sqlite-setup.ts   jeep-sqlite bootstrap, browser only
 │   │   ├── seed.ts               first-run data (§5.9)
 │   │   ├── rows.ts               row types and defensive narrowing
 │   │   └── repositories/
-│   │       ├── documents.repository.ts   create, save, list, numbering, dashboard
-│   │       └── masters.repository.ts     profile, clients, catalogue, series, terms, settings
-│   ├── render/
-│   │   └── html.ts               THE single source of truth for document output (§10.1)
-│   ├── export/
-│   │   └── filename.ts           export filename rules (§10.2)
+│   │       ├── documents.repository.ts
+│   │       └── masters.repository.ts
+│   │
+│   ├── render/html.ts            THE single source of document output (§10.1)
+│   ├── export/filename.ts        export filename rules (§10.2)
+│   │
 │   ├── shared/
-│   │   ├── pipes/format.pipes.ts paise / milli / basis-points / ISO date
-│   │   └── ui/                   reusable presentation components
-│   ├── features/                 one folder per screen, lazily routed
-│   │   ├── dashboard/
+│   │   ├── pipes/                one pipe per file
+│   │   │   ├── paise.pipe.ts
+│   │   │   ├── milli.pipe.ts
+│   │   │   ├── basis-points.pipe.ts
+│   │   │   └── iso-date.pipe.ts
+│   │   └── ui/
+│   │       └── status-chip/      ts + html + scss
+│   │
+│   ├── features/                 one folder per component, lazily routed
+│   │   ├── dashboard/            dashboard.page.{ts,html,scss}
 │   │   ├── documents/
+│   │   │   ├── document-list/    document-list.page.{ts,html,scss}
+│   │   │   ├── document-editor/  document-editor.page.{ts,html,scss}
+│   │   │   └── document-editor.store.ts     signal store (not a component)
 │   │   ├── clients/
+│   │   │   └── client-list/      client-list.page.{ts,html,scss}
 │   │   └── settings/
-│   ├── tabs/                     the four tabs of §4
-│   ├── app.routes.ts             lazy route table
-│   └── app.config.ts             providers
+│   │       └── settings-hub/     settings-hub.page.{ts,html,scss}
+│   │
+│   └── tabs/                     tabs.page.{ts,html,scss} — the four tabs of §4
+│
 ├── theme/variables.scss          design tokens, shared with the React Native tree
 └── styles.scss                   global styles and accessibility rules
 ```
+
+### Component layout convention
+
+Every component lives in a folder named after it and holds exactly three files — `.ts`, `.html`,
+`.scss`. No component uses an inline template or inline styles, so markup is always found in the
+same place and a designer can edit HTML and CSS without opening TypeScript.
+
+Files that are *not* components stay flat next to the feature they serve:
+`document-editor.store.ts` is a service, and pipes have no markup, so each is simply one file.
 
 ### The rule that makes `core/` valuable
 

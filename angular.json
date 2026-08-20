@@ -32,6 +32,11 @@
                 "glob": "sql-wasm.wasm",
                 "input": "node_modules/sql.js/dist",
                 "output": "/assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets"
               }
             ],
             "styles": [

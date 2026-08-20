@@ -1,290 +1,184 @@
-# CraftyDocs
+# CraftyDocs — Ionic Angular
 
-Quotation, invoice and receipt maker for Android. Offline-first, single-user, no accounts, no
-server, no network calls of any kind.
+Port of the CraftyDocs Android app from Expo / React Native to **Ionic 9 + Angular 22 +
+Capacitor 8**, against the specification in `REQUIREMENTS.md` (kept outside this repository).
 
-Built for The Crafty Pixels, Kangarapady, Ernakulam, to the specification in
-`REQUIREMENTS.md`.
-
----
-
-## What it does
-
-- Creates **quotations**, **invoices** and **receipts**, each exportable as **PDF**, **DOCX**
-  or **PNG/JPG**.
-- Pulls line-item prices from a saved catalogue, or takes them typed in per line — the choice
-  is per line, and overriding a catalogue price is visible on the line and never written back
-  to the catalogue without an explicit tap.
-- Reuses your business details, logo and signature on every document.
-- Handles Indian GST properly: CGST+SGST versus IGST inferred from state codes, HSN-wise tax
-  summary, amount in words in the lakh/crore system, financial-year document numbering that
-  restarts on 1 April.
-- If you are not GST registered, leave the GSTIN blank and no GST field appears anywhere.
+> **Status: work in progress.** The domain logic is complete and fully tested and the edit loop
+> works, but the export path is not written and nothing has run on Android yet. Read "What is done
+> / what is not" before relying on it.
+>
+> The previous Expo / React Native implementation — which did produce a verified APK — was removed
+> from the working tree to save space. It is preserved in git at the tag `expo-final-rn`:
+> `git checkout expo-final-rn` brings it back in full.
 
 ---
 
-## Prerequisites
+## Folder structure
 
-| Tool | Version | Notes |
-|---|---|---|
-| **Node.js** | **22.x LTS or 24.x** (developed on 24.19.0) | Node 20 works; anything below 20 does not. |
-| npm | 10 or newer | Ships with the Node versions above. |
-| Java JDK | 17 | Only for the local Gradle build, not for EAS. |
-| Android SDK | Platform 35, build-tools 35 | Only for the local build. |
-| EAS CLI | latest | `npm install -g eas-cli`. Only for the cloud build. |
-| Android device | Android 8.0 (API 26) or newer | Target API 35, portrait only. |
+The layout separates *what the business rules are* from *how they are stored* and *how they are
+shown*, which is what made this port cheap in the first place.
 
-Check your Node version before anything else:
-
-```bash
-node --version
+```
+src/
+├── app/
+│   ├── app.ts / app.html / app.scss        root shell
+│   ├── app.routes.ts                       lazy route table
+│   ├── app.config.ts                       providers
+│   │
+│   ├── core/                     PURE domain logic. No Angular, Ionic or Capacitor.
+│   │   ├── money.ts              integer paise; the ONLY decimal parser (§16.5)
+│   │   ├── calc.ts               every calculation rule in §9
+│   │   ├── gst.ts                GSTIN validation, CGST/SGST vs IGST (§9.4)
+│   │   ├── numbering.ts          document numbers, financial year, gaps (§8)
+│   │   ├── number-to-words-indian.ts   lakh/crore amount in words (§9.5)
+│   │   ├── status.ts             the §6.4 state machine — derived, never stored
+│   │   ├── qr.ts                 hand-written QR encoder (§7.6)
+│   │   ├── dates.ts              dates as text, so timezones cannot shift them
+│   │   ├── ids.ts, types.ts
+│   │   └── *.spec.ts             293 tests
+│   │
+│   ├── data/                     persistence
+│   │   ├── schema.ts             SQL + append-only migrations (§5, §16.4)
+│   │   ├── sqlite.service.ts     one connection; migrations; query/run/transaction
+│   │   ├── web-sqlite-setup.ts   jeep-sqlite bootstrap, browser only
+│   │   ├── seed.ts               first-run data (§5.9)
+│   │   ├── rows.ts               row types and defensive narrowing
+│   │   └── repositories/
+│   │       ├── documents.repository.ts
+│   │       └── masters.repository.ts
+│   │
+│   ├── render/html.ts            THE single source of document output (§10.1)
+│   ├── export/filename.ts        export filename rules (§10.2)
+│   │
+│   ├── shared/
+│   │   ├── pipes/                one pipe per file
+│   │   │   ├── paise.pipe.ts
+│   │   │   ├── milli.pipe.ts
+│   │   │   ├── basis-points.pipe.ts
+│   │   │   └── iso-date.pipe.ts
+│   │   └── ui/
+│   │       └── status-chip/      ts + html + scss
+│   │
+│   ├── features/                 one folder per component, lazily routed
+│   │   ├── dashboard/            dashboard.page.{ts,html,scss}
+│   │   ├── documents/
+│   │   │   ├── document-list/    document-list.page.{ts,html,scss}
+│   │   │   ├── document-editor/  document-editor.page.{ts,html,scss}
+│   │   │   └── document-editor.store.ts     signal store (not a component)
+│   │   ├── clients/
+│   │   │   └── client-list/      client-list.page.{ts,html,scss}
+│   │   └── settings/
+│   │       └── settings-hub/     settings-hub.page.{ts,html,scss}
+│   │
+│   └── tabs/                     tabs.page.{ts,html,scss} — the four tabs of §4
+│
+├── theme/variables.scss          design tokens, shared with the React Native tree
+└── styles.scss                   global styles and accessibility rules
 ```
 
+### Component layout convention
+
+Every component lives in a folder named after it and holds exactly three files — `.ts`, `.html`,
+`.scss`. No component uses an inline template or inline styles, so markup is always found in the
+same place and a designer can edit HTML and CSS without opening TypeScript.
+
+Files that are *not* components stay flat next to the feature they serve:
+`document-editor.store.ts` is a service, and pipes have no markup, so each is simply one file.
+
+### The rule that makes `core/` valuable
+
+Nothing in `src/app/core/`, `src/app/render/html.ts` or `src/app/export/filename.ts` may import
+Angular, Ionic or Capacitor. That is not a convention — `vitest.config.ts` runs those suites in a
+plain Node environment with no framework present, so an Angular import there stops the tests
+compiling. It is why this layer moved from React Native to Angular unchanged, and it is why it
+would move again.
+
 ---
 
-## Install
+## Run it
 
 ```bash
 npm install
 ```
 
----
-
-## Run in development
-
 ```bash
-npx expo start
+npm start
 ```
 
-Then press `a` to open on a connected Android device or emulator, or scan the QR code with
-Expo Go. Note that **Expo Go cannot run the DOCX or image export** — those need the native
-modules in a development or preview build. Everything else works in Expo Go.
+Then open http://localhost:4300.
 
-For a development build with all native modules:
-
-```bash
-npx expo run:android
-```
-
----
-
-## Review the screens on a desktop
-
-The UI can be driven in a normal browser, which is the quickest way to look at every screen
-without waiting for a build. It needs **two terminals**, because the database will not work
-without the second one:
-
-```bash
-npm run web
-```
-
-```bash
-npm run web:proxy
-```
-
-Then open **http://localhost:8099** — the proxy's port, not 8095.
-
-The proxy exists for one reason: `expo-sqlite`'s browser build runs wa-sqlite in a worker that
-needs `SharedArrayBuffer`, which browsers only expose to a cross-origin-isolated document. Expo
-serves its HTML shell outside Metro's middleware, so the headers have to be added in front of
-it. Open 8095 directly and you get a working-looking app whose first write hangs for ever.
-
-What works in the browser: every screen, navigation, the database, the editor with live totals,
-the catalogue and client pickers, the A4 document preview (an iframe showing the same HTML the
-PDF is made from), and signature drawing on a canvas. Not available: PDF, DOCX and image
-export, camera and gallery pickers, and the share sheet — all of those are native.
-
-**The browser is a review aid, not the product.** Android is the target, and §14's acceptance
-tests have to pass on a physical device.
-
----
-
-## Run the tests
+## Test it
 
 ```bash
 npm test
 ```
 
-379 tests across three suites. The `core` and `pure` projects run under plain Node without
-`jest-expo`, which is deliberate: it means anything in `src/core/`, `src/render/html.ts` or
-`src/export/filename.ts` that acquires a React, react-native or expo import **fails to
-compile**. The specification's rule that the calculation layer stays pure is enforced by the
-build rather than by review.
+379 tests: the whole financial core, the QR encoder checked against 24 reference matrices, the
+HTML renderer, export filenames, and the SQL schema executed against Node's own SQLite.
 
 ```bash
-npm test -- --selectProjects core     # money, tax, numbering, words, QR, dates, status
-npm test -- --selectProjects db       # real schema + migrations, run on node:sqlite
-npm test -- --selectProjects pure     # HTML renderer, export filenames
-npm run typecheck                     # tsc --noEmit, strict
+npm run typecheck
 ```
-
-To eyeball the four document templates in a browser:
-
-```bash
-SAMPLE_OUT=./docs/samples npx jest --selectProjects pure -t 'writes sample HTML'
-```
-
-That writes `docs/samples/sample-{classic,minimal,bold,compact}.html`. Open them in any
-browser; print to PDF to check pagination.
 
 ---
 
-## Build the APK
-
-### Primary path — EAS Build (recommended)
+## Build for Android
 
 ```bash
-eas build -p android --profile preview
+npm run cap:sync
 ```
-
-The `preview` profile in `eas.json` produces an installable **APK**. When it finishes, EAS
-gives you a download link.
-
-The `production` profile produces an **AAB** for a future Play Store listing.
-
-### Install the APK on a device
 
 ```bash
-adb install -r Quotation-app.apk
+npm run cap:apk
 ```
 
-`-r` reinstalls over an existing copy. If `adb` cannot see the phone, enable Developer
-options → USB debugging, and accept the prompt on the phone.
-
-### Fallback path — local Gradle build
-
-```bash
-npx expo prebuild --platform android
-cd android
-./gradlew assembleRelease
-```
-
-The APK lands in `android/app/build/outputs/apk/release/`.
-
-A release build needs a signing key. Generate one **once**:
-
-```bash
-keytool -genkeypair -v -storetype PKCS12 -keystore craftydocs-release.keystore -alias craftydocs -keyalg RSA -keysize 2048 -validity 10000
-```
-
-Store `craftydocs-release.keystore` and its passwords somewhere you will not lose them — a
-password manager, plus a copy on a drive that is not this computer. Reference it from
-`android/gradle.properties`:
-
-```properties
-MYAPP_RELEASE_STORE_FILE=craftydocs-release.keystore
-MYAPP_RELEASE_KEY_ALIAS=craftydocs
-MYAPP_RELEASE_STORE_PASSWORD=…
-MYAPP_RELEASE_KEY_PASSWORD=…
-```
-
-> ### ⚠️ Losing the keystore makes future updates un-installable
->
-> Android identifies an app by its package name **and** its signing key. If you lose the
-> keystore, a new build signed with a different key cannot install over the existing app.
-> Every user — including you — would have to uninstall CraftyDocs first, **which deletes all
-> its data**. Back the keystore up before you build, not after.
->
-> If you use EAS Build, EAS holds the key for you (`eas credentials` to inspect it). Even
-> then, export a copy: `eas credentials` → Android → download the keystore.
+The Android platform has **not** been added yet — `npx cap add android` is the missing first step,
+and it needs the Android SDK and JDK 17 installed locally.
 
 ---
 
-## Two things that fail obscurely if disturbed
+## What is done / what is not
 
-### 1. The `buffer` polyfill (DOCX export)
+### Done and verified
 
-The `docx` library reaches for Node's global `Buffer`, which React Native does not provide.
-Without the polyfill, DOCX export dies with a `ReferenceError` from deep inside the packer,
-nowhere near the actual cause.
+| Area | State |
+|---|---|
+| `core/` — money, tax, numbering, words, QR, dates, status | **Complete**, 293 tests, ported verbatim |
+| `render/html.ts` — the A4 document renderer, 4 templates | **Complete**, 50 tests |
+| `export/filename.ts` | **Complete**, 16 tests |
+| SQL schema + migrations | **Complete**, 18 tests against real SQLite |
+| Seed data (§5.9) | Written |
+| Repositories: documents, masters | Written |
+| Ionic shell: tabs, routing, theme, pipes | Working — builds and renders |
+| Dashboard, documents list, clients list, settings hub | Written and rendering |
+| **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override |
 
-It is installed as the **first statement** of `app/_layout.tsx`, above every other import:
+### Not yet written
 
-```ts
-import { Buffer } from 'buffer';
-if (typeof global.Buffer === 'undefined') {
-  global.Buffer = Buffer;
-}
-```
+- **Preview and export** (§10) — PDF, DOCX and PNG all need Capacitor equivalents of
+  `expo-print`, `expo-sharing` and `react-native-view-shot`. The renderer they consume is done;
+  only the platform plumbing is missing.
+- **Detail screens**: client editor, catalogue item editor, onboarding, and the nine settings
+  pages behind the hub.
+- **Backup and restore** (§11).
+- **Font embedding** — `src/app/export/fonts.ts` has no Ionic equivalent yet. Until it exists,
+  exported documents will not reliably render ₹.
+- **`npx cap add android`** and a real device build.
 
-Do not move it below the other imports, and do not remove `buffer` from `package.json`.
-`src/export/docx.ts` checks for it and throws a readable error if it is missing, but that is a
-safety net, not a substitute.
+### Verified working in the browser
 
-### 2. Embedded fonts (the ₹ sign)
+Migrations, seed, and the full edit loop: creating a quotation, adding a line, typing
+`1.5` × `7,500.50` and getting **₹11,251.00** (round-off applied), autosaving, and reading the same
+figure back on the dashboard after a full page reload.
 
-The rupee sign (₹, U+20B9) and Malayalam text render as blank boxes in the print engine with
-the platform's default font stack. So the export HTML carries its fonts inside itself as
-base64 `@font-face` sources — see `src/export/fonts.ts`.
+Three browser-only traps are documented in `data/web-sqlite-setup.ts` — all three failed silently,
+which is why the comments there are so emphatic.
 
-- `assets/fonts/NotoSans-Regular.ttf` and `NotoSans-SemiBold.ttf` are always embedded.
-- `NotoSansMalayalam-Regular.ttf` is embedded **only** when the document actually contains
-  Malayalam characters, because it is another 113 KB on every export otherwise.
-- The files are read once and cached for the process lifetime.
+### Still unverified
 
-If you remove those font files, exports will still generate — and the rupee sign may silently
-turn into a box on some devices. Check a real export on a real device after touching anything
-in `src/export/fonts.ts`.
+Nothing has run on Android. `npx cap add android` has not been done, so the native SQLite path,
+the export path and font embedding are all untested on a device.
 
----
-
-## How the code is arranged
-
-```
-app/                      expo-router screens (file-based routing)
-  _layout.tsx             buffer polyfill, DB init, image-export host
-  (tabs)/                 Home, Documents, Clients, More
-  doc/[id]/               editor, preview, export sheet
-  onboarding/             business profile → logo → signature
-  settings/               ten settings screens
-src/
-  core/                   PURE. No React, no DB, no I/O. 295 tests.
-    calc.ts               every money rule in §9, integer paise only
-    money.ts              the only place a typed decimal is parsed
-    numberToWordsIndian.ts  lakh/crore amount in words
-    numbering.ts          document numbers, financial year, gap detection
-    gst.ts                GSTIN validation, CGST/SGST vs IGST inference
-    qr.ts                 hand-written QR encoder (no dependency, no network)
-    status.ts             the §6.4 state machine, derived not stored
-    dates.ts              calendar dates as strings, timezone-proof
-  db/                     schema, append-only migrations, repositories, backup
-  render/html.ts          THE single source of truth for document output
-  export/                 PDF, DOCX, image, share/save, font embedding
-  state/editor.ts         Zustand editor store with 400 ms debounced autosave
-  components/             UI kit and the pickers
-scripts/generate-icons.mjs  regenerates the launcher icons
-docs/samples/             rendered examples of the four templates
-```
-
-### The rules the code holds itself to
-
-- **Money is always integer paise.** No `parseFloat` on a currency value anywhere outside
-  `src/core/money.ts`. Products use BigInt internally so a large document cannot lose
-  precision.
-- **Totals are computed once and stored** on the document, so an invoice issued last year
-  keeps its numbers even if the calculation code changes.
-- **Client and business details are snapshotted** onto each document at creation. Editing a
-  client never rewrites a document already issued.
-- **Schema changes only ever append a migration.** `src/db/schema.ts` explains why.
-- **One HTML renderer** feeds the PDF, the image and the preview. If the preview and the
-  export disagree, that is a bug by definition.
-
----
-
-## Backup
-
-Settings → Backup & restore writes a single JSON file holding every table plus the logo and
-signature as base64, and hands it to the share sheet. Keep a copy off the phone.
-
-Restore validates the file's format version, tells you what it contains, and asks before
-overwriting. It parses everything before deleting anything, so a corrupt file cannot leave you
-with neither the old data nor the new. Restart the app afterwards.
-
----
-
-## Privacy
-
-No analytics. No crash-reporting SDK. No network calls of any kind. The QR codes are generated
-on the device by hand-written code rather than an image API, and the export HTML is checked by
-a test to contain no `http://` or `https://` reference. Your documents never leave the phone
-unless you share them yourself.
+The Noto fonts needed for §10.1's rupee-glyph embedding are preserved in `src/assets/fonts/`, and
+the launcher-icon generator in `scripts/generate-icons.mjs` still works — both were carried over
+from the Expo tree so the export work has what it needs.

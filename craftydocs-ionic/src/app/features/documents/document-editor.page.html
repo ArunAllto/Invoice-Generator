@@ -1,0 +1,514 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button (click)="openPreview()">Preview</ion-button>
+    </ion-buttons>
+    <ion-title>{{ typeTitle() }}</ion-title>
+    <ion-buttons slot="end">
+      @if (derived(); as status) {
+        <cd-status-chip [status]="status.status" />
+      }
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (!document()) {
+    <div class="cd-centre"><p>This document could not be opened.</p></div>
+  } @else {
+    @if (saveError()) {
+      <ion-item color="danger">
+        <ion-label class="ion-text-wrap">
+          <h3>Your last change could not be saved.</h3>
+          <p>{{ saveError() }}</p>
+        </ion-label>
+      </ion-item>
+    }
+
+    <!-- §6.4: an issued receipt, or anything cancelled, is frozen. -->
+    @if (!editable()) {
+      <ion-item color="warning">
+        <ion-label class="ion-text-wrap">
+          This document has been issued and can no longer be edited.
+        </ion-label>
+      </ion-item>
+    }
+
+    <ion-accordion-group [multiple]="true" [value]="['details', 'items']">
+      <!-- 1. Details -->
+      <ion-accordion value="details">
+        <ion-item slot="header" color="light">
+          <ion-label>Details</ion-label>
+        </ion-item>
+        <div slot="content">
+          <ion-item button="true" (click)="editNumber()">
+            <ion-label>
+              <p>Number</p>
+              <h3>{{ document()!.number || 'next: ' + (numberPreview() ?? '—') }}</h3>
+              @if (!document()!.number) {
+                <!-- §8.3: drafts take no number, so an abandoned draft leaves no gap. -->
+                <p class="cd-muted">Assigned when you share or send this</p>
+              }
+            </ion-label>
+            <ion-note slot="end">Edit</ion-note>
+          </ion-item>
+
+          @if (document()!.numberWarning) {
+            <ion-item color="warning">
+              <ion-label class="ion-text-wrap">
+                This number is already used by another document of this type.
+              </ion-label>
+            </ion-item>
+          }
+
+          <ion-item>
+            <ion-input
+              label="Issue date"
+              labelPlacement="stacked"
+              type="date"
+              [value]="document()!.issueDate.slice(0, 10)"
+              (ionChange)="onIssueDate($any($event.detail).value)"
+            />
+          </ion-item>
+
+          @if (document()!.type === 'quotation') {
+            <ion-item>
+              <ion-input
+                label="Valid until"
+                labelPlacement="stacked"
+                type="date"
+                [value]="document()!.validUntil?.slice(0, 10) ?? ''"
+                (ionChange)="onValidUntil($any($event.detail).value)"
+              />
+            </ion-item>
+          }
+
+          @if (document()!.type === 'invoice') {
+            <ion-item>
+              <ion-input
+                label="Due date"
+                labelPlacement="stacked"
+                type="date"
+                [value]="document()!.dueDate?.slice(0, 10) ?? ''"
+                (ionChange)="onDueDate($any($event.detail).value)"
+              />
+            </ion-item>
+          }
+
+          @for (action of statusActions(); track action.status) {
+            <ion-button expand="block" fill="outline" (click)="setStatus(action.status)">
+              {{ action.label }}
+            </ion-button>
+          }
+        </div>
+      </ion-accordion>
+
+      <!-- 2. Client -->
+      <ion-accordion value="client">
+        <ion-item slot="header" color="light">
+          <ion-label>Client</ion-label>
+        </ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-label class="ion-text-wrap">
+              <h3>
+                {{
+                  document()!.clientSnapshot?.company ||
+                    document()!.clientSnapshot?.name ||
+                    'No client / walk-in'
+                }}
+              </h3>
+              @if (!document()!.clientSnapshot) {
+                <!-- §7.4: no client means the client block is simply left off the output. -->
+                <p class="cd-muted">The client block is left off this document.</p>
+              }
+            </ion-label>
+          </ion-item>
+          <ion-note class="cd-inline-note">
+            Choosing a client is not wired up in this build yet.
+          </ion-note>
+        </div>
+      </ion-accordion>
+
+      <!-- 3. Items -->
+      <ion-accordion value="items">
+        <ion-item slot="header" color="light">
+          <ion-label>Items ({{ lines().length }})</ion-label>
+        </ion-item>
+        <div slot="content">
+          <div class="cd-add-row">
+            <ion-button expand="block" (click)="addFromCatalogue()">Add from catalogue</ion-button>
+            <ion-button expand="block" fill="outline" (click)="addCustomLine()">
+              Add custom line
+            </ion-button>
+          </div>
+
+          @if (lines().length === 0) {
+            <ion-note class="cd-inline-note">No items yet. Add one to get started.</ion-note>
+          }
+
+          @for (line of lines(); track line.id; let i = $index) {
+            <div class="cd-line">
+              <div class="cd-line-head">
+                <span class="cd-line-index">{{ i + 1 }}</span>
+                <div class="cd-pills">
+                  <!-- §7.3: the badges are how price provenance stays visible. -->
+                  @if (line.priceSource === 'auto') {
+                    <ion-badge color="primary">Catalogue price</ion-badge>
+                  } @else if (line.catalogueItemId) {
+                    <ion-badge color="warning">Edited</ion-badge>
+                  } @else {
+                    <ion-badge color="medium">Custom</ion-badge>
+                  }
+                  @if (line.isFree) {
+                    <ion-badge color="success">FREE</ion-badge>
+                  }
+                </div>
+                <div class="cd-line-actions">
+                  @if (i > 0) {
+                    <ion-button fill="clear" size="small" (click)="moveLine(i, -1)" aria-label="Move up">
+                      <ion-icon slot="icon-only" name="arrow-up-outline" />
+                    </ion-button>
+                  }
+                  @if (i < lines().length - 1) {
+                    <ion-button fill="clear" size="small" (click)="moveLine(i, 1)" aria-label="Move down">
+                      <ion-icon slot="icon-only" name="arrow-down-outline" />
+                    </ion-button>
+                  }
+                  <ion-button fill="clear" size="small" color="danger" (click)="removeLine(line)" aria-label="Remove line">
+                    <ion-icon slot="icon-only" name="close-outline" />
+                  </ion-button>
+                </div>
+              </div>
+
+              <ion-item>
+                <ion-input
+                  label="Description"
+                  labelPlacement="stacked"
+                  [value]="line.name"
+                  placeholder="What are you charging for?"
+                  (ionBlur)="lineName(line, $any($event.target).value)"
+                />
+              </ion-item>
+
+              <ion-item>
+                <ion-textarea
+                  label="Details"
+                  labelPlacement="stacked"
+                  [value]="line.description"
+                  [autoGrow]="true"
+                  (ionBlur)="lineDescription(line, $any($event.target).value)"
+                />
+              </ion-item>
+
+              <div class="cd-line-grid">
+                <ion-item>
+                  <ion-input
+                    label="Qty"
+                    labelPlacement="stacked"
+                    inputmode="decimal"
+                    [value]="formatMilli(line.qtyMilli)"
+                    (ionBlur)="lineQty(line, $any($event.target).value)"
+                  />
+                </ion-item>
+                <ion-item>
+                  <ion-input
+                    label="Unit"
+                    labelPlacement="stacked"
+                    [value]="line.unit"
+                    (ionBlur)="lineUnit(line, $any($event.target).value)"
+                  />
+                </ion-item>
+                <ion-item>
+                  <ion-input
+                    label="Rate"
+                    labelPlacement="stacked"
+                    inputmode="decimal"
+                    [value]="formatPaise(line.rate)"
+                    (ionBlur)="lineRate(line, $any($event.target).value)"
+                  />
+                </ion-item>
+                <ion-item>
+                  <ion-input
+                    label="Discount %"
+                    labelPlacement="stacked"
+                    inputmode="decimal"
+                    [value]="formatBasisPoints(line.discountBp)"
+                    (ionBlur)="lineDiscount(line, $any($event.target).value)"
+                  />
+                </ion-item>
+              </div>
+
+              <!-- §9.4: no GST controls at all for an unregistered business. -->
+              @if (gstEnabled() && document()!.taxMode !== 'none' && document()!.taxMode !== 'flat') {
+                <ion-item>
+                  <ion-select
+                    label="Tax"
+                    labelPlacement="stacked"
+                    [value]="line.taxRateBp"
+                    (ionChange)="lineTax(line, $any($event.detail).value)"
+                  >
+                    @for (preset of taxPresets(); track preset.id) {
+                      <ion-select-option [value]="preset.rateBp">
+                        {{ formatBasisPoints(preset.rateBp) }}%
+                      </ion-select-option>
+                    }
+                  </ion-select>
+                </ion-item>
+              }
+
+              @if (gstEnabled()) {
+                <ion-item>
+                  <ion-input
+                    label="HSN/SAC"
+                    labelPlacement="stacked"
+                    [value]="line.hsnSac"
+                    (ionBlur)="lineHsn(line, $any($event.target).value)"
+                  />
+                </ion-item>
+              }
+
+              <ion-item>
+                <ion-checkbox
+                  [checked]="line.isFree"
+                  (ionChange)="lineFree(line, $any($event.detail).checked)"
+                >
+                  Mark as complimentary
+                </ion-checkbox>
+              </ion-item>
+
+              <div class="cd-line-total">
+                <span class="cd-muted">Amount</span>
+                <strong class="cd-amount">
+                  @if (line.isFree) {
+                    FREE
+                  } @else {
+                    {{ (lineCalc(i)?.lineTotal ?? 0) | paise }}
+                  }
+                </strong>
+              </div>
+
+              @if (lineCalc(i); as lc) {
+                @if (lc.lineTax > 0) {
+                  <ion-note class="cd-inline-note">
+                    Tax {{ lc.lineTax | paise }} on {{ lc.lineBase | paise }}
+                  </ion-note>
+                }
+              }
+            </div>
+          }
+        </div>
+      </ion-accordion>
+
+      <!-- 4. Discount, tax & charges -->
+      <ion-accordion value="charges">
+        <ion-item slot="header" color="light">
+          <ion-label>Discount, tax &amp; charges</ion-label>
+        </ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-select
+              label="Discount"
+              labelPlacement="stacked"
+              [value]="document()!.discountMode"
+              (ionChange)="onDiscountMode($any($event.detail).value)"
+            >
+              <ion-select-option value="none">No discount</ion-select-option>
+              <ion-select-option value="percent">Percentage</ion-select-option>
+              <ion-select-option value="amount">Fixed amount</ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          @if (document()!.discountMode !== 'none') {
+            <ion-item>
+              <ion-input
+                [label]="document()!.discountMode === 'percent' ? 'Discount %' : 'Discount amount'"
+                labelPlacement="stacked"
+                inputmode="decimal"
+                [value]="
+                  document()!.discountMode === 'percent'
+                    ? formatBasisPoints(document()!.discountValue)
+                    : formatPaise(document()!.discountValue)
+                "
+                (ionBlur)="onDiscountValue($any($event.target).value)"
+              />
+            </ion-item>
+          }
+
+          <ion-item>
+            <ion-input
+              label="Delivery / shipping"
+              labelPlacement="stacked"
+              inputmode="decimal"
+              [value]="formatPaise(document()!.shippingAmount)"
+              (ionBlur)="onShipping($any($event.target).value)"
+            />
+          </ion-item>
+
+          @if (gstEnabled()) {
+            <ion-item>
+              <ion-select
+                label="Tax"
+                labelPlacement="stacked"
+                [value]="document()!.taxMode"
+                (ionChange)="onTaxMode($any($event.detail).value)"
+              >
+                <ion-select-option value="none">No tax</ion-select-option>
+                <ion-select-option value="gst_intra">CGST + SGST (same state)</ion-select-option>
+                <ion-select-option value="gst_inter">IGST (other state)</ion-select-option>
+                <ion-select-option value="flat">Single tax rate</ion-select-option>
+              </ion-select>
+            </ion-item>
+
+            @if (document()!.taxMode === 'flat') {
+              <ion-item>
+                <ion-input
+                  label="Tax rate %"
+                  labelPlacement="stacked"
+                  inputmode="decimal"
+                  [value]="formatBasisPoints(document()!.flatTaxRateBp)"
+                  (ionBlur)="onFlatRate($any($event.target).value)"
+                />
+              </ion-item>
+            }
+          } @else {
+            <ion-note class="cd-inline-note">
+              Add a GSTIN in Settings to show GST options. With none set, no GST field appears
+              anywhere.
+            </ion-note>
+          }
+
+          <ion-item>
+            <ion-toggle
+              [checked]="document()!.roundOffEnabled"
+              (ionChange)="onRoundOff($any($event.detail).checked)"
+            >
+              Round off to the nearest rupee
+            </ion-toggle>
+          </ion-item>
+
+          <!-- Live totals, recomputed synchronously on every keystroke (§6.3). -->
+          @if (calc(); as c) {
+            <ion-list class="cd-totals">
+              <ion-item>
+                <ion-label>Subtotal</ion-label>
+                <ion-note slot="end">{{ c.subtotal | paise }}</ion-note>
+              </ion-item>
+              @if (c.discountTotal > 0) {
+                <ion-item>
+                  <ion-label>Discount</ion-label>
+                  <ion-note slot="end">− {{ c.discountTotal | paise }}</ion-note>
+                </ion-item>
+                <ion-item>
+                  <ion-label>Taxable value</ion-label>
+                  <ion-note slot="end">{{ c.taxBase | paise }}</ion-note>
+                </ion-item>
+              }
+              @if (document()!.taxMode === 'gst_intra') {
+                <ion-item>
+                  <ion-label>CGST</ion-label>
+                  <ion-note slot="end">{{ c.cgstTotal | paise }}</ion-note>
+                </ion-item>
+                <ion-item>
+                  <ion-label>SGST</ion-label>
+                  <ion-note slot="end">{{ c.sgstTotal | paise }}</ion-note>
+                </ion-item>
+              } @else if (document()!.taxMode === 'gst_inter') {
+                <ion-item>
+                  <ion-label>IGST</ion-label>
+                  <ion-note slot="end">{{ c.igstTotal | paise }}</ion-note>
+                </ion-item>
+              } @else if (document()!.taxMode === 'flat') {
+                <ion-item>
+                  <ion-label>Tax</ion-label>
+                  <ion-note slot="end">{{ c.taxTotal | paise }}</ion-note>
+                </ion-item>
+              }
+              @if (c.shipping > 0) {
+                <ion-item>
+                  <ion-label>Delivery</ion-label>
+                  <ion-note slot="end">{{ c.shipping | paise }}</ion-note>
+                </ion-item>
+              }
+              @if (c.roundOff !== 0) {
+                <ion-item>
+                  <ion-label>Round off</ion-label>
+                  <ion-note slot="end">{{ c.roundOff | paise }}</ion-note>
+                </ion-item>
+              }
+              <ion-item>
+                <ion-label><strong>Total</strong></ion-label>
+                <ion-note slot="end" color="primary">
+                  <strong>{{ c.grandTotal | paise }}</strong>
+                </ion-note>
+              </ion-item>
+            </ion-list>
+            <ion-note class="cd-inline-note">{{ document()!.amountInWords }}</ion-note>
+          }
+        </div>
+      </ion-accordion>
+
+      <!-- 5. Notes -->
+      <ion-accordion value="notes">
+        <ion-item slot="header" color="light">
+          <ion-label>Notes</ion-label>
+        </ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-textarea
+              label="Notes"
+              labelPlacement="stacked"
+              [value]="document()!.notes"
+              [autoGrow]="true"
+              (ionBlur)="onNotes($any($event.target).value)"
+            />
+          </ion-item>
+        </div>
+      </ion-accordion>
+
+      <!-- 6. Terms -->
+      <ion-accordion value="terms">
+        <ion-item slot="header" color="light">
+          <ion-label>Terms &amp; conditions</ion-label>
+        </ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-textarea
+              label="Terms for this document"
+              labelPlacement="stacked"
+              [value]="document()!.terms"
+              [autoGrow]="true"
+              [rows]="8"
+              (ionBlur)="onTerms($any($event.target).value)"
+            />
+          </ion-item>
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
+  }
+</ion-content>
+
+<!-- §6.2 item 9: the total is always visible. -->
+@if (document()) {
+  <ion-footer>
+    <ion-toolbar>
+      <div class="cd-footer">
+        <div class="cd-footer-total">
+          <span class="cd-muted">Total</span>
+          <strong class="cd-amount">{{ grandTotal() | paise }}</strong>
+          <span class="cd-muted cd-save-state">
+            @switch (saveState()) {
+              @case ('saving') { Saving… }
+              @case ('dirty') { Unsaved }
+              @case ('error') { Not saved }
+              @default { Saved }
+            }
+          </span>
+        </div>
+        <ion-button size="small" (click)="openPreview()">Preview</ion-button>
+      </div>
+    </ion-toolbar>
+  </ion-footer>
+}

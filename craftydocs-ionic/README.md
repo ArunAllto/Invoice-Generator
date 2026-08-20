@@ -124,11 +124,10 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Repositories: documents, masters | Written |
 | Ionic shell: tabs, routing, theme, pipes | Working — builds and renders |
 | Dashboard, documents list, clients list, settings hub | Written and rendering |
+| **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override |
 
 ### Not yet written
 
-- **The document editor** (§6.2) — the largest remaining screen: line items, the auto/custom
-  price badges of §7.3, live totals, autosave.
 - **Preview and export** (§10) — PDF, DOCX and PNG all need Capacitor equivalents of
   `expo-print`, `expo-sharing` and `react-native-view-shot`. The renderer they consume is done;
   only the platform plumbing is missing.
@@ -139,12 +138,17 @@ and it needs the Android SDK and JDK 17 installed locally.
   exported documents will not reliably render ₹.
 - **`npx cap add android`** and a real device build.
 
-### Known problem
+### Verified working in the browser
 
-In the **browser**, the Capacitor SQLite web adapter (`jeep-sqlite`) initialises its custom
-element but the connection never completes, so the dashboard sits on a spinner. Android does not
-use this path at all — it talks to native SQLite — but that means the data layer is currently
-unverified on *both* platforms. This is the first thing to fix.
+Migrations, seed, and the full edit loop: creating a quotation, adding a line, typing
+`1.5` × `7,500.50` and getting **₹11,251.00** (round-off applied), autosaving, and reading the same
+figure back on the dashboard after a full page reload.
 
-The Expo tree in the parent directory remains the working, APK-producing app until this one
-catches up.
+Three browser-only traps are documented in `data/web-sqlite-setup.ts` — all three failed silently,
+which is why the comments there are so emphatic.
+
+### Still unverified
+
+Nothing has run on Android. `npx cap add android` has not been done, so the native SQLite path,
+the export path and font embedding are all untested on a device. The Expo tree in the parent
+directory remains the working, APK-producing app until this one catches up.

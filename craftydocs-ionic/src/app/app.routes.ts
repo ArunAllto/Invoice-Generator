@@ -35,6 +35,15 @@ export const routes: Routes = [
       { path: '', redirectTo: 'home', pathMatch: 'full' },
     ],
   },
+  /**
+   * The editor sits outside the tab shell so it presents full-screen, with no tab bar underneath.
+   * `:id` is bound straight to the component's `id` input by `withComponentInputBinding`.
+   */
+  {
+    path: 'document/:id',
+    loadComponent: () =>
+      import('./features/documents/document-editor.page').then((m) => m.DocumentEditorPage),
+  },
   { path: '', redirectTo: 'tabs/home', pathMatch: 'full' },
   { path: '**', redirectTo: 'tabs/home' },
 ];

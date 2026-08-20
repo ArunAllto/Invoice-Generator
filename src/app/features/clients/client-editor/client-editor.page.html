@@ -1,0 +1,168 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/clients" /></ion-buttons>
+    <ion-title>{{ title() }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (loading() || !client()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    <ion-list inset="true">
+      <ion-item>
+        <ion-input
+          label="Contact name"
+          labelPlacement="stacked"
+          autocapitalize="words"
+          [value]="client()!.name"
+          (ionInput)="patch('name', $any($event.target).value)"
+          (ionBlur)="nameTouched.set(true)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="Company"
+          labelPlacement="stacked"
+          autocapitalize="words"
+          [value]="client()!.company"
+          (ionInput)="patch('company', $any($event.target).value)"
+        />
+      </ion-item>
+    </ion-list>
+    @if (nameTouched() && identityMissing()) {
+      <ion-note color="danger" class="cd-note">
+        Fill in a contact name or a company — the document has to be addressed to someone.
+      </ion-note>
+    } @else {
+      <ion-note class="cd-note">
+        Either one is enough; the company is shown first if you give both.
+      </ion-note>
+    }
+
+    <div class="cd-section-title">Address</div>
+    <ion-list inset="true">
+      <ion-item>
+        <ion-input
+          label="Address line 1"
+          labelPlacement="stacked"
+          [value]="client()!.addressLine1"
+          (ionInput)="patch('addressLine1', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="Address line 2"
+          labelPlacement="stacked"
+          [value]="client()!.addressLine2"
+          (ionInput)="patch('addressLine2', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="City"
+          labelPlacement="stacked"
+          [value]="client()!.city"
+          (ionInput)="patch('city', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="State"
+          labelPlacement="stacked"
+          [value]="client()!.state"
+          (ionInput)="patch('state', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="PIN code"
+          labelPlacement="stacked"
+          inputmode="numeric"
+          [value]="client()!.pincode"
+          (ionInput)="patch('pincode', $any($event.target).value)"
+        />
+      </ion-item>
+    </ion-list>
+    <!-- §9.4: place of supply. Worth saying out loud, since it changes the tax breakdown. -->
+    <ion-note class="cd-note">
+      The state decides CGST + SGST versus IGST on GST invoices, so it is worth filling in.
+    </ion-note>
+
+    <div class="cd-section-title">Contact</div>
+    <ion-list inset="true">
+      <ion-item>
+        <ion-input
+          label="Phone"
+          labelPlacement="stacked"
+          inputmode="tel"
+          [value]="client()!.phone"
+          (ionInput)="patch('phone', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="Email"
+          labelPlacement="stacked"
+          inputmode="email"
+          [value]="client()!.email"
+          (ionInput)="patch('email', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="GSTIN"
+          labelPlacement="stacked"
+          autocapitalize="characters"
+          [value]="client()!.gstin ?? ''"
+          (ionBlur)="patchGstin($any($event.target).value)"
+        />
+      </ion-item>
+    </ion-list>
+    @if (gstinWarning()) {
+      <ion-note color="warning" class="cd-note">{{ gstinWarning() }}</ion-note>
+    }
+
+    <div class="cd-section-title">Notes</div>
+    <ion-list inset="true">
+      <ion-item>
+        <ion-textarea
+          label="Private notes"
+          labelPlacement="stacked"
+          [autoGrow]="true"
+          rows="3"
+          [value]="client()!.notes"
+          (ionInput)="patch('notes', $any($event.target).value)"
+        />
+      </ion-item>
+    </ion-list>
+    <ion-note class="cd-note">Never printed on a document — these are only for you.</ion-note>
+
+    @if (!isNew()) {
+      <ion-list inset="true">
+        <ion-item>
+          <ion-toggle
+            [checked]="client()!.archived"
+            (ionChange)="patch('archived', $any($event.detail).checked)"
+          >
+            Archived
+          </ion-toggle>
+        </ion-item>
+      </ion-list>
+      <ion-note class="cd-note">
+        Archived clients stay off the pickers but keep their documents.
+      </ion-note>
+    }
+
+    <div class="cd-actions">
+      <ion-button expand="block" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Saving…' : 'Save' }}
+      </ion-button>
+      @if (!isNew()) {
+        <ion-button expand="block" fill="outline" color="danger" (click)="remove()">
+          Remove
+        </ion-button>
+      }
+    </div>
+  }
+</ion-content>

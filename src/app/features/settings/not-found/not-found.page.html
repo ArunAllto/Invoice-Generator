@@ -1,0 +1,21 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/home" /></ion-buttons>
+    <ion-title>Not built yet</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="cd-centre">
+    <h2>This screen isn’t built yet</h2>
+    <p>
+      You reached <code>{{ path }}</code>, which has no screen behind it. This part of the app is
+      still being written.
+    </p>
+    <p class="cd-muted">
+      It used to send you silently back to Home, which looked like a button that did nothing. Now it
+      says so instead.
+    </p>
+    <ion-button expand="block" routerLink="/tabs/home">Back to Home</ion-button>
+  </div>
+</ion-content>

@@ -1,0 +1,213 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Business profile</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    <ion-note class="cd-note">
+      These details are copied onto each document as you create it, so changing them here never
+      alters a document you have already issued.
+    </ion-note>
+
+    <ion-item>
+      <ion-input
+        label="Business name *"
+        labelPlacement="stacked"
+        [value]="profile().name"
+        (ionInput)="patch('name', $any($event.target).value)"
+        (ionBlur)="nameTouched.set(true)"
+      />
+    </ion-item>
+    @if (nameTouched() && nameMissing()) {
+      <ion-note color="danger" class="cd-note">Your business needs a name.</ion-note>
+    }
+
+    <ion-item>
+      <ion-input
+        label="Tagline"
+        labelPlacement="stacked"
+        [value]="profile().tagline"
+        (ionInput)="patch('tagline', $any($event.target).value)"
+      />
+    </ion-item>
+
+    <ion-accordion-group>
+      <ion-accordion value="address">
+        <ion-item slot="header" color="light"><ion-label>Address</ion-label></ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-input
+              label="Address line 1"
+              labelPlacement="stacked"
+              [value]="profile().addressLine1"
+              (ionInput)="patch('addressLine1', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="Address line 2"
+              labelPlacement="stacked"
+              [value]="profile().addressLine2"
+              (ionInput)="patch('addressLine2', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="City"
+              labelPlacement="stacked"
+              [value]="profile().city"
+              (ionInput)="patch('city', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="State"
+              labelPlacement="stacked"
+              [value]="profile().state"
+              (ionInput)="patch('state', $any($event.target).value)"
+            />
+          </ion-item>
+          <!-- §9.4: with no client GSTIN, this field is what decides CGST+SGST versus IGST. -->
+          <ion-note class="cd-note">
+            Used to decide CGST + SGST versus IGST when a client has no GSTIN.
+          </ion-note>
+          <ion-item>
+            <ion-input
+              label="PIN code"
+              labelPlacement="stacked"
+              inputmode="numeric"
+              [value]="profile().pincode"
+              (ionInput)="patch('pincode', $any($event.target).value)"
+            />
+          </ion-item>
+        </div>
+      </ion-accordion>
+
+      <ion-accordion value="contact">
+        <ion-item slot="header" color="light"><ion-label>Contact</ion-label></ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-input
+              label="Phone"
+              labelPlacement="stacked"
+              inputmode="tel"
+              [value]="profile().phone"
+              (ionInput)="patch('phone', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="Email"
+              labelPlacement="stacked"
+              inputmode="email"
+              [value]="profile().email"
+              (ionInput)="patch('email', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="Website"
+              labelPlacement="stacked"
+              inputmode="url"
+              [value]="profile().website"
+              (ionInput)="patch('website', $any($event.target).value)"
+            />
+          </ion-item>
+        </div>
+      </ion-accordion>
+
+      <ion-accordion value="tax">
+        <ion-item slot="header" color="light"><ion-label>Tax registration</ion-label></ion-item>
+        <div slot="content">
+          <ion-item>
+            <ion-input
+              label="GSTIN"
+              labelPlacement="stacked"
+              autocapitalize="characters"
+              [value]="profile().gstin ?? ''"
+              (ionBlur)="patchUpper('gstin', $any($event.target).value)"
+            />
+          </ion-item>
+          <!-- The master switch of §9.4, so it says so rather than leaving it to be discovered. -->
+          <ion-note class="cd-note">
+            Leave blank if you are not GST registered — no GST field will appear anywhere in the
+            app.
+          </ion-note>
+          @if (gstinWarning()) {
+            <ion-note color="warning" class="cd-note">{{ gstinWarning() }}</ion-note>
+          }
+          <ion-item>
+            <ion-input
+              label="PAN"
+              labelPlacement="stacked"
+              autocapitalize="characters"
+              [value]="profile().pan ?? ''"
+              (ionBlur)="patchUpper('pan', $any($event.target).value)"
+            />
+          </ion-item>
+        </div>
+      </ion-accordion>
+
+      <ion-accordion value="bank">
+        <ion-item slot="header" color="light"><ion-label>Bank details</ion-label></ion-item>
+        <div slot="content">
+          <ion-note class="cd-note">Only the fields you fill in are printed.</ion-note>
+          <ion-item>
+            <ion-input
+              label="Bank name"
+              labelPlacement="stacked"
+              [value]="profile().bankName ?? ''"
+              (ionBlur)="patchNullable('bankName', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="Account name"
+              labelPlacement="stacked"
+              [value]="profile().bankAccountName ?? ''"
+              (ionBlur)="patchNullable('bankAccountName', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="Account number"
+              labelPlacement="stacked"
+              inputmode="numeric"
+              [value]="profile().bankAccountNo ?? ''"
+              (ionBlur)="patchNullable('bankAccountNo', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="IFSC"
+              labelPlacement="stacked"
+              autocapitalize="characters"
+              [value]="profile().bankIfsc ?? ''"
+              (ionBlur)="patchUpper('bankIfsc', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="UPI ID"
+              labelPlacement="stacked"
+              [value]="profile().upiId ?? ''"
+              (ionBlur)="patchNullable('upiId', $any($event.target).value)"
+            />
+          </ion-item>
+          <ion-note class="cd-note">Needed for the UPI payment QR on invoices (§7.6).</ion-note>
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
+
+    <div class="cd-actions">
+      <ion-button expand="block" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Saving…' : 'Save' }}
+      </ion-button>
+    </div>
+  }
+</ion-content>

@@ -1,51 +1,111 @@
-/* Design tokens, carried over from the React Native theme so the two trees look the same.
-   Ionic reads these CSS variables, which is how one palette drives every component. */
+/**
+ * Theme application, and the bridge from our tokens to Ionic's.
+ *
+ * ## How a theme gets chosen
+ *
+ * `ThemeService` writes `data-theme="light|dark|high-contrast"` onto `<html>`. When the user picks
+ * "System" it writes nothing, and the `prefers-color-scheme` block below decides — which is why
+ * that block is guarded with `:not([data-theme=...])`: an explicit choice must beat the OS in both
+ * directions, and without the guard a user who chose Light on a dark-mode phone would still get
+ * dark.
+ *
+ * ## Why Ionic's variables are set from ours rather than the other way round
+ *
+ * Ionic components read `--ion-*`. Our components read `--cd-*`. Mapping ours onto Ionic's, in one
+ * place, means a theme is defined once and both halves follow. The alternative — components reading
+ * `--ion-color-primary` directly — would tie our markup to Ionic's naming and make a token like
+ * `--cd-preview-field`, which has no Ionic equivalent, homeless.
+ */
 
+@use 'tokens' as tokens;
+
+/* Light is the default and also the explicit choice. */
+:root,
+:root[data-theme='light'] {
+  @include tokens.cd-theme-light;
+}
+
+/* System preference, only when the user has not chosen explicitly. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='high-contrast']):not([data-theme='dark']) {
+    @include tokens.cd-theme-dark;
+  }
+}
+
+/* Explicit choices win over the OS. */
+:root[data-theme='dark'] {
+  @include tokens.cd-theme-dark;
+}
+
+:root[data-theme='high-contrast'] {
+  @include tokens.cd-theme-high-contrast;
+}
+
+/* ---------------------------------------------------------------------------
+   Ionic variable bridge — applies to every theme, since it reads our tokens
+   --------------------------------------------------------------------------- */
 :root {
-  /* Navy accent — the owner's house colour. */
-  --ion-color-primary: #0f4c81;
-  --ion-color-primary-rgb: 15, 76, 129;
-  --ion-color-primary-contrast: #ffffff;
-  --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #0d4372;
-  --ion-color-primary-tint: #275e8e;
+  --ion-color-primary: var(--cd-accent);
+  --ion-color-primary-contrast: var(--cd-accent-contrast);
+  --ion-color-primary-shade: var(--cd-accent-shade);
+  --ion-color-primary-tint: var(--cd-accent-tint);
 
-  --ion-color-success: #0f7b4f;
-  --ion-color-success-rgb: 15, 123, 79;
-  --ion-color-success-contrast: #ffffff;
-  --ion-color-success-shade: #0d6c46;
-  --ion-color-success-tint: #278861;
+  --ion-color-success: var(--cd-success);
+  --ion-color-success-contrast: var(--cd-accent-contrast);
+  --ion-color-warning: var(--cd-warning);
+  --ion-color-danger: var(--cd-danger);
 
-  --ion-color-warning: #9a6400;
-  --ion-color-warning-rgb: 154, 100, 0;
-  --ion-color-warning-contrast: #ffffff;
-  --ion-color-warning-shade: #885800;
-  --ion-color-warning-tint: #a4741a;
+  --ion-background-color: var(--cd-page);
+  --ion-text-color: var(--cd-text);
 
-  --ion-color-danger: #b3261e;
-  --ion-color-danger-rgb: 179, 38, 30;
-  --ion-color-danger-contrast: #ffffff;
-  --ion-color-danger-shade: #9e211a;
-  --ion-color-danger-tint: #bb3c35;
+  --ion-card-background: var(--cd-surface-raised);
+  --ion-item-background: var(--cd-surface);
+  --ion-toolbar-background: var(--cd-accent);
+  --ion-toolbar-color: var(--cd-accent-contrast);
 
-  --ion-background-color: #f6f8fa;
-  --ion-background-color-rgb: 246, 248, 250;
-  --ion-text-color: #14181f;
-  --ion-text-color-rgb: 20, 24, 31;
+  --ion-border-color: var(--cd-border);
 
-  --ion-card-background: #ffffff;
-  --ion-item-background: #ffffff;
-  --ion-toolbar-background: #0f4c81;
-  --ion-toolbar-color: #ffffff;
+  /* Ionic derives its greys from this scale; pointing it at our tokens stops list dividers and
+     placeholder text drifting out of theme. */
+  --ion-color-step-50: var(--cd-surface-sunken);
+  --ion-color-step-100: var(--cd-surface-sunken);
+  --ion-color-step-150: var(--cd-border);
+  --ion-color-step-400: var(--cd-text-faint);
+  --ion-color-step-600: var(--cd-text-muted);
+  --ion-color-step-850: var(--cd-text);
 
-  /* App-specific tokens the components read directly. */
-  --cd-ink-muted: #5a6472;
-  --cd-ink-faint: #8a93a1;
-  --cd-border: #dce2ea;
-  --cd-border-strong: #c3ccd8;
-  --cd-surface-alt: #f6f8fa;
-  --cd-surface-sunken: #eef1f5;
-
-  /* §11: minimum touch target. */
+  /* §11: minimum touch target, referenced by the global rules in styles.scss. */
   --cd-touch-target: 44px;
+}
+
+/**
+ * Ionic needs the RGB triplets separately for its own alpha blending — `rgba(var(--ion-color-x-rgb),
+ * .2)` appears throughout its stylesheets. They cannot be derived from a `var()` colour, so the
+ * literals are repeated per theme here. Keep them in step with `_tokens.scss`.
+ */
+:root,
+:root[data-theme='light'] {
+  --ion-color-primary-rgb: 15, 76, 129;
+  --ion-background-color-rgb: 246, 248, 250;
+  --ion-text-color-rgb: 20, 24, 31;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='high-contrast']):not([data-theme='dark']) {
+    --ion-color-primary-rgb: 107, 167, 219;
+    --ion-background-color-rgb: 18, 22, 28;
+    --ion-text-color-rgb: 232, 236, 241;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ion-color-primary-rgb: 107, 167, 219;
+  --ion-background-color-rgb: 18, 22, 28;
+  --ion-text-color-rgb: 232, 236, 241;
+}
+
+:root[data-theme='high-contrast'] {
+  --ion-color-primary-rgb: 0, 58, 107;
+  --ion-background-color-rgb: 255, 255, 255;
+  --ion-text-color-rgb: 0, 0, 0;
 }

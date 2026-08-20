@@ -1,0 +1,43 @@
+.cd-note {
+  display: block;
+  padding: 8px 20px 16px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cd-sample-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.cd-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Token swatches. Reads the live CSS variables, so it is always an accurate picture of the
+   active theme rather than a hand-maintained copy. */
+.cd-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 0 20px 8px;
+}
+
+.cd-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cd-swatch-chip {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--cd-border);
+}
+
+.cd-swatch-name {
+  font-size: 11px;
+  color: var(--cd-text-muted);
+}

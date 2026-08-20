@@ -1,0 +1,21 @@
+/* The grey field behind the page, so the paper edge reads as paper. Themed, because in dark mode
+   a white page on a white app background loses its edge entirely. */
+.cd-preview-content {
+  --background: var(--cd-preview-field);
+}
+
+.cd-preview-bar {
+  padding: 8px 16px 0;
+  text-align: center;
+}
+
+/* The iframe carries its own scrolling, so it is sized to fill the content area rather than
+   growing to the document height — a nested scroll is the only way to keep the toolbar and the
+   page-count line fixed while a three-page document scrolls. */
+.cd-preview-frame {
+  display: block;
+  width: 100%;
+  height: calc(100% - 28px);
+  border: 0;
+  background: var(--cd-preview-field);
+}

@@ -3,3 +3,9 @@
   padding: 24px 16px;
   text-align: center;
 }
+
+/* Rows whose screen is not written yet. Dimmed rather than hidden, so the list still reads as the
+   map of what the app does — but visibly not a live control. */
+.cd-unbuilt ion-label {
+  opacity: 0.55;
+}

@@ -3,9 +3,9 @@
 Port of the CraftyDocs Android app from Expo / React Native to **Ionic 9 + Angular 22 +
 Capacitor 8**, against the specification in `REQUIREMENTS.md` (kept outside this repository).
 
-> **Status: work in progress.** The domain logic is complete and fully tested and the edit loop
-> works, but the export path is not written and nothing has run on Android yet. Read "What is done
-> / what is not" before relying on it.
+> **Status: work in progress.** The domain logic is complete and fully tested, the edit loop works
+> and the document preview renders, but file export (PDF / DOCX / PNG) is not written and nothing has
+> run on Android yet. Read "What is done / what is not" before relying on it.
 >
 > The previous Expo / React Native implementation — which did produce a verified APK — was removed
 > from the working tree to save space. It is preserved in git at the tag `expo-final-rn`:
@@ -47,7 +47,9 @@ src/
 │   │       ├── documents.repository.ts
 │   │       └── masters.repository.ts
 │   │
-│   ├── render/html.ts            THE single source of document output (§10.1)
+│   ├── render/
+│   │   ├── html.ts               THE single source of document output (§10.1)
+│   │   └── adapt.ts              stored document → renderer input; type-only imports, so pure
 │   ├── export/filename.ts        export filename rules (§10.2)
 │   │
 │   ├── shared/
@@ -56,23 +58,34 @@ src/
 │   │   │   ├── milli.pipe.ts
 │   │   │   ├── basis-points.pipe.ts
 │   │   │   └── iso-date.pipe.ts
+│   │   ├── theme/
+│   │   │   └── theme.service.ts  the four theme choices, persisted to localStorage
 │   │   └── ui/
-│   │       └── status-chip/      ts + html + scss
+│   │       ├── status-chip/      ts + html + scss
+│   │       └── toast.service.ts  fire-and-forget notifications (never awaited — see the file)
 │   │
 │   ├── features/                 one folder per component, lazily routed
 │   │   ├── dashboard/            dashboard.page.{ts,html,scss}
 │   │   ├── documents/
 │   │   │   ├── document-list/    document-list.page.{ts,html,scss}
 │   │   │   ├── document-editor/  document-editor.page.{ts,html,scss}
+│   │   │   ├── document-preview/ document-preview.page.{ts,html,scss}
 │   │   │   └── document-editor.store.ts     signal store (not a component)
 │   │   ├── clients/
-│   │   │   └── client-list/      client-list.page.{ts,html,scss}
+│   │   │   ├── client-list/      client-list.page.{ts,html,scss}
+│   │   │   └── client-editor/    client-editor.page.{ts,html,scss}
 │   │   └── settings/
-│   │       └── settings-hub/     settings-hub.page.{ts,html,scss}
+│   │       ├── settings-hub/     settings-hub.page.{ts,html,scss}
+│   │       ├── business-profile/ business-profile.page.{ts,html,scss}
+│   │       ├── appearance/       appearance.page.{ts,html,scss}
+│   │       ├── about/            about.page.{ts,html,scss}
+│   │       └── not-found/        not-found.page.{ts,html,scss}
 │   │
 │   └── tabs/                     tabs.page.{ts,html,scss} — the four tabs of §4
 │
-├── theme/variables.scss          design tokens, shared with the React Native tree
+├── theme/
+│   ├── _tokens.scss              the token contract: one mixin per theme
+│   └── variables.scss            applies a theme, and bridges --cd-* onto Ionic --ion-*
 └── styles.scss                   global styles and accessibility rules
 ```
 
@@ -92,6 +105,39 @@ Angular, Ionic or Capacitor. That is not a convention — `vitest.config.ts` run
 plain Node environment with no framework present, so an Angular import there stops the tests
 compiling. It is why this layer moved from React Native to Angular unchanged, and it is why it
 would move again.
+
+---
+
+## Design system and themes
+
+Every colour in the app comes from a token. Components never hold a hex value, which is what makes an
+extra theme a matter of one more set of values rather than a search through stylesheets.
+
+- **`src/theme/_tokens.scss`** is the contract: one SCSS mixin per theme, each defining the same
+  token names. Tokens are *semantic* — `--cd-surface-raised`, `--cd-text-muted` — not literal. A literal
+  name stops making sense the moment a dark theme exists, where the raised surface is lighter than
+  the page rather than darker.
+- **`src/theme/variables.scss`** applies the mixins and maps `--cd-*` onto Ionic's `--ion-*`, in one
+  place, so a theme is defined once and both our components and Ionic's follow.
+- **`ThemeService`** writes `data-theme` on `<html>` and knows no colours at all.
+
+Four choices: **Match device**, **Light**, **Dark**, **High contrast**. Settings → Theme.
+
+Three details worth knowing before editing the stylesheet:
+
+- *Match device* **removes** the attribute rather than writing a resolved value, so the browser's own
+  `prefers-color-scheme` query stays the single source of truth. Writing `dark` instead would go
+  stale the moment the owner changed their phone setting with the app open.
+- The `prefers-color-scheme` block is guarded with `:not([data-theme=…])` for each explicit theme. An
+  explicit choice has to beat the OS in *both* directions; without the guard, choosing Light on a
+  dark-mode phone would still render dark.
+- The RGB triplets (`--ion-color-primary-rgb` and friends) are repeated per theme as literals. Ionic
+  does `rgba(var(--ion-color-primary-rgb), .2)` internally, and a triplet cannot be derived from a
+  `var()` colour. Keep them in step with `_tokens.scss`.
+
+The preference is stored in `localStorage`, not the settings table, because it has to be applied before
+the first paint — and opening SQLite means jeep-sqlite, a WASM module and an async open, several
+hundred milliseconds during which the app would show the wrong theme and then snap.
 
 ---
 
@@ -151,6 +197,11 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Repositories: documents, masters | Written |
 | Ionic shell: tabs, routing, theme, pipes | Working — builds and renders |
 | Dashboard, documents list, clients list, settings hub | Written and rendering |
+| Design system: semantic tokens, 4 themes, Appearance screen | Working — light / dark / high contrast / match device, persisted, verified in the browser |
+| Client add / edit (§5.2) | Working: save, archive-or-delete, GSTIN warning |
+| Business profile (§7, §9.4) | Working: save, GSTIN gate, bank details |
+| Document preview (§10.2) | Working: renders the real A4 HTML in an iframe, page count, browser print dialogue |
+| About (§13.5) | Written |
 | **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override |
 
 ### Dependencies

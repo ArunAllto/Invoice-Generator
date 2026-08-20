@@ -36,7 +36,6 @@ import {
   IonTitle,
   IonToggle,
   IonToolbar,
-  ToastController,
   type ViewWillLeave,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
@@ -60,6 +59,7 @@ import { DocumentsRepository } from '../../../data/repositories/documents.reposi
 import { MastersRepository, type TaxPreset } from '../../../data/repositories/masters.repository';
 import { PaisePipe } from '../../../shared/pipes/paise.pipe';
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import { ToastService } from '../../../shared/ui/toast.service';
 import { DocumentEditorStore } from '../document-editor.store';
 
 @Component({
@@ -100,7 +100,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   private readonly repository = inject(DocumentsRepository);
   private readonly masters = inject(MastersRepository);
   private readonly router = inject(Router);
-  private readonly toasts = inject(ToastController);
+  private readonly toast = inject(ToastService);
   private readonly alerts = inject(AlertController);
 
   /**
@@ -250,7 +250,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   async addFromCatalogue(): Promise<void> {
     const items = await this.masters.listCatalogueItems();
     if (items.length === 0) {
-      await this.toast('Your catalogue is empty. Add items in Settings.');
+      this.toast.show('Your catalogue is empty. Add items in Settings.');
       return;
     }
 
@@ -334,7 +334,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
           handler: () => {
             void this.masters
               .updateCatalogueRate(catalogueItemId, rate)
-              .then(() => this.toast('Catalogue price updated.'));
+              .then(() => this.toast.show('Catalogue price updated.'));
           },
         },
       ],
@@ -358,12 +358,9 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   async removeLine(line: LineItem): Promise<void> {
     const removed = this.store.removeLine(line.id);
     if (!removed) return;
-    const toast = await this.toasts.create({
-      message: 'Line removed.',
-      duration: 4000,
-      buttons: [{ text: 'Undo', handler: () => this.store.restoreLine(removed.line, removed.position) }],
-    });
-    await toast.present();
+    this.toast.withAction('Line removed.', 'Undo', () =>
+      this.store.restoreLine(removed.line, removed.position),
+    );
   }
 
   moveLine(index: number, delta: number): void {
@@ -425,7 +422,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await this.repository.setStatus(doc.id, status);
     await this.store.reload(doc.id);
     await this.refreshNumberPreview();
-    await this.toast(statusLabel(status));
+    this.toast.show(statusLabel(status));
   }
 
   /** §8.4: the user may type any number; a duplicate is warned about, never blocked. */
@@ -459,7 +456,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await this.repository.setNumberManually(id, numberText, duplicate);
     await this.store.reload(id);
     if (duplicate) {
-      await this.toast('This number is already used by another document of this type.');
+      this.toast.show('This number is already used by another document of this type.');
     }
   }
 
@@ -468,11 +465,6 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     if (!doc) return;
     await this.store.flush();
     await this.router.navigate(['/document', doc.id, 'preview']);
-  }
-
-  private async toast(message: string): Promise<void> {
-    const toast = await this.toasts.create({ message, duration: 2500 });
-    await toast.present();
   }
 
   // Formatting helpers for the template, so it never formats a number itself.

@@ -1,0 +1,62 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>About</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="cd-hero">
+    <h1>{{ appName }}</h1>
+    <p>{{ business }}</p>
+  </div>
+
+  <ion-list inset="true">
+    <ion-list-header>This build</ion-list-header>
+    <ion-item>
+      <ion-label>
+        <h3>App version</h3>
+        <p>{{ version }}</p>
+      </ion-label>
+    </ion-item>
+    <ion-item>
+      <ion-label>
+        <h3>Database schema</h3>
+        <!-- Worth surfacing: "which migration am I on" is the first useful diagnostic question. -->
+        <p>
+          @if (status().ready) {
+            Version {{ status().schemaVersion }}
+          } @else {
+            Not open yet
+          }
+        </p>
+      </ion-label>
+    </ion-item>
+  </ion-list>
+
+  <ion-list inset="true">
+    <ion-list-header>Privacy</ion-list-header>
+    <ion-item>
+      <ion-label class="ion-text-wrap">
+        <h3>Everything stays on this device</h3>
+        <p>
+          There is no account, no server and no analytics. Your clients, documents and business
+          details live in a database on this device only, and leave it only when you export or back
+          up a file yourself.
+        </p>
+      </ion-label>
+    </ion-item>
+    <ion-item>
+      <ion-label class="ion-text-wrap">
+        <h3>No network permission is used</h3>
+        <p>
+          The app works with the device offline. Nothing it shows you depends on being connected.
+        </p>
+      </ion-label>
+    </ion-item>
+  </ion-list>
+
+  <div class="cd-centre">
+    <ion-note>Made for a single owner-operated business.</ion-note>
+  </div>
+</ion-content>

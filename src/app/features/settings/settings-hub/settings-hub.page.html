@@ -9,11 +9,19 @@
     <ion-list inset="true">
       <ion-list-header>{{ group.heading }}</ion-list-header>
       @for (entry of group.entries; track entry.route) {
-        <ion-item button="true" detail="true" (click)="open(entry.route)">
+        <ion-item
+          button="true"
+          [detail]="entry.built"
+          [class.cd-unbuilt]="!entry.built"
+          (click)="open(entry)"
+        >
           <ion-label>
             <h3>{{ entry.title }}</h3>
             <p>{{ entry.subtitle }}</p>
           </ion-label>
+          @if (!entry.built) {
+            <ion-badge slot="end" color="medium">Soon</ion-badge>
+          }
         </ion-item>
       }
     </ion-list>

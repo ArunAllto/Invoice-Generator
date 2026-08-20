@@ -1,0 +1,71 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Appearance</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list inset="true">
+    <ion-list-header>Theme</ion-list-header>
+    <ion-radio-group [value]="choice()" (ionChange)="onChange($any($event.detail).value)">
+      @for (option of options; track option.value) {
+        <ion-item>
+          <ion-radio [value]="option.value" labelPlacement="end" justify="start">
+            <ion-label class="ion-text-wrap">
+              <h3>{{ option.label }}</h3>
+              <p>{{ option.description }}</p>
+            </ion-label>
+          </ion-radio>
+        </ion-item>
+      }
+    </ion-radio-group>
+  </ion-list>
+
+  <ion-note class="cd-note">
+    Currently showing <strong>{{ resolved() }}</strong>.
+    @if (choice() === 'system') {
+      Following your device setting.
+    }
+  </ion-note>
+
+  <!-- A live sample, so the effect of a choice is visible without hunting for a screen that
+       happens to use every colour. -->
+  <ion-list inset="true">
+    <ion-list-header>Preview</ion-list-header>
+    <ion-item>
+      <ion-label>
+        <h3>Invoice CP/INV/2026-27/004</h3>
+        <p>Acme Traders Pvt Ltd · 20 Aug 2026</p>
+      </ion-label>
+      <div slot="end" class="cd-sample-end">
+        <strong class="cd-amount">₹43,780</strong>
+        <cd-status-chip status="overdue" />
+      </div>
+    </ion-item>
+    <ion-item>
+      <ion-label>
+        <h3>Quotation CP/Q/2026-27/012</h3>
+        <p>No client / walk-in · 18 Aug 2026</p>
+      </ion-label>
+      <div slot="end" class="cd-sample-end">
+        <strong class="cd-amount">₹11,251</strong>
+        <cd-status-chip status="paid" />
+      </div>
+    </ion-item>
+  </ion-list>
+
+  <div class="cd-swatches">
+    @for (swatch of swatches; track swatch.token) {
+      <div class="cd-swatch">
+        <span class="cd-swatch-chip" [style.background]="'var(' + swatch.token + ')'"></span>
+        <span class="cd-swatch-name">{{ swatch.label }}</span>
+      </div>
+    }
+  </div>
+
+  <ion-note class="cd-note">
+    Documents always export on white paper whatever theme you choose — the theme is the app's
+    appearance, not the invoice's.
+  </ion-note>
+</ion-content>

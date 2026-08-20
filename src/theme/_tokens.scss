@@ -1,0 +1,134 @@
+/**
+ * The design token contract.
+ *
+ * Every colour in the app comes from a token defined here — components never hard-code a hex
+ * value. That is what makes a new theme a matter of supplying one more set of values rather than
+ * hunting through stylesheets.
+ *
+ * Tokens are *semantic*, named for the job they do (`--cd-surface-raised`, `--cd-text-muted`)
+ * rather than for how they look (`--cd-grey-200`). A literal name stops making sense the moment a
+ * dark theme exists, where the "raised" surface is lighter than the page rather than darker.
+ *
+ * Each mixin below is one complete theme. They are applied in `variables.scss`.
+ */
+
+/* ---------------------------------------------------------------------------
+   Light — the default, matching the printed document's own palette
+   --------------------------------------------------------------------------- */
+@mixin cd-theme-light {
+  --cd-accent: #0f4c81;
+  --cd-accent-contrast: #ffffff;
+  --cd-accent-shade: #0d4372;
+  --cd-accent-tint: #275e8e;
+  --cd-accent-soft: #e8f0f7;
+
+  --cd-page: #f6f8fa;
+  --cd-surface: #ffffff;
+  --cd-surface-raised: #ffffff;
+  --cd-surface-sunken: #eef1f5;
+
+  --cd-text: #14181f;
+  --cd-text-muted: #5a6472;
+  --cd-text-faint: #8a93a1;
+  --cd-text-on-accent: #ffffff;
+
+  --cd-border: #dce2ea;
+  --cd-border-strong: #c3ccd8;
+
+  --cd-success: #0f7b4f;
+  --cd-success-soft: #e4f5ec;
+  --cd-warning: #9a6400;
+  --cd-warning-soft: #fdf3df;
+  --cd-danger: #b3261e;
+  --cd-danger-soft: #fce9e7;
+
+  --cd-overlay: rgba(20, 24, 31, 0.45);
+  --cd-shadow: 0 1px 3px rgba(15, 26, 42, 0.12);
+
+  /* The A4 preview always sits on a grey field so the page edge reads as paper. */
+  --cd-preview-field: #eef1f5;
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark
+   --------------------------------------------------------------------------- */
+@mixin cd-theme-dark {
+  /* The navy accent is lightened: at #0f4c81 on a dark ground it fails contrast badly. */
+  --cd-accent: #6ba7db;
+  --cd-accent-contrast: #0a1929;
+  --cd-accent-shade: #5e93c1;
+  --cd-accent-tint: #7db0df;
+  --cd-accent-soft: #16283a;
+
+  --cd-page: #12161c;
+  --cd-surface: #1a1f27;
+  /* Raised surfaces are *lighter* here — the opposite of the light theme, which is exactly why
+     these tokens are named by role. */
+  --cd-surface-raised: #222932;
+  --cd-surface-sunken: #0e1217;
+
+  --cd-text: #e8ecf1;
+  --cd-text-muted: #a2acba;
+  --cd-text-faint: #6d7785;
+  --cd-text-on-accent: #0a1929;
+
+  --cd-border: #2c333d;
+  --cd-border-strong: #3d4653;
+
+  --cd-success: #4cc38a;
+  --cd-success-soft: #14281f;
+  --cd-warning: #e0a458;
+  --cd-warning-soft: #2a2113;
+  --cd-danger: #f2837b;
+  --cd-danger-soft: #2d1817;
+
+  --cd-overlay: rgba(0, 0, 0, 0.6);
+  --cd-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+
+  --cd-preview-field: #0e1217;
+
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   High contrast — §11's accessibility line, for bright sunlight and low vision
+   --------------------------------------------------------------------------- */
+@mixin cd-theme-high-contrast {
+  --cd-accent: #003a6b;
+  --cd-accent-contrast: #ffffff;
+  --cd-accent-shade: #002d54;
+  --cd-accent-tint: #14507f;
+  --cd-accent-soft: #dce9f5;
+
+  --cd-page: #ffffff;
+  --cd-surface: #ffffff;
+  --cd-surface-raised: #ffffff;
+  --cd-surface-sunken: #f0f0f0;
+
+  /* Pure black on pure white, and muted text is only slightly lighter — a "subtle" grey is the
+     first thing to disappear outdoors. */
+  --cd-text: #000000;
+  --cd-text-muted: #2b2b2b;
+  --cd-text-faint: #4a4a4a;
+  --cd-text-on-accent: #ffffff;
+
+  --cd-border: #000000;
+  --cd-border-strong: #000000;
+
+  --cd-success: #005c33;
+  --cd-success-soft: #d9f0e3;
+  --cd-warning: #6b4500;
+  --cd-warning-soft: #f7ecd6;
+  --cd-danger: #8c0d07;
+  --cd-danger-soft: #f7dedc;
+
+  --cd-overlay: rgba(0, 0, 0, 0.7);
+  /* Borders carry the separation instead of shadow, which is invisible in bright light. */
+  --cd-shadow: none;
+
+  --cd-preview-field: #f0f0f0;
+
+  color-scheme: light;
+}

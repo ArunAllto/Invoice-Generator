@@ -17,9 +17,13 @@ ion-tab-button {
   min-height: var(--cd-touch-target);
 }
 
-.cd-muted { color: var(--cd-ink-muted); }
+/* ---------------------------------------------------------------------------
+   Text utilities. Every colour is a token — see src/theme/_tokens.scss.
+   --------------------------------------------------------------------------- */
+.cd-muted { color: var(--cd-text-muted); }
+.cd-faint { color: var(--cd-text-faint); }
 .cd-amount { font-variant-numeric: tabular-nums; }
-.cd-required { color: var(--ion-color-danger); font-weight: 600; }
+.cd-required { color: var(--cd-danger); font-weight: 600; }
 
 /* Section label above a group of fields. */
 .cd-section-title {
@@ -27,8 +31,8 @@ ion-tab-button {
   font-weight: 600;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  color: var(--cd-ink-muted);
-  margin: 16px 4px 4px;
+  color: var(--cd-text-muted);
+  margin: 16px 20px 4px;
 }
 
 /* Shared list-screen bits, used by the documents and clients pages. */
@@ -42,6 +46,7 @@ ion-tab-button {
 .cd-centre {
   padding: 32px 16px;
   text-align: center;
+  color: var(--cd-text-muted);
 }
 
 .cd-row-end {
@@ -58,8 +63,11 @@ ion-tab-button {
   justify-content: flex-end;
 }
 
+/* Sits on the coloured toolbar, so it takes the accent's contrast colour rather than a
+   hard-coded white — in high contrast the toolbar is a different navy, and in a future light
+   toolbar white text would vanish. */
 .cd-sort {
   padding-right: 12px;
   font-size: 13px;
-  color: #fff;
+  color: var(--cd-accent-contrast);
 }

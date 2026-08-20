@@ -1,0 +1,36 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/documents" /></ion-buttons>
+    <ion-title>{{ heading() }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="print()" aria-label="Print or save as PDF">
+        <ion-icon slot="icon-only" name="print-outline" />
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="cd-preview-content">
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else if (!loaded()) {
+    <div class="cd-centre">
+      <p>That document could not be loaded.</p>
+    </div>
+  } @else {
+    <div class="cd-preview-bar">
+      <ion-note>
+        {{ pageCount() }} {{ pageCount() === 1 ? 'page' : 'pages' }} · A4
+      </ion-note>
+    </div>
+
+    <!-- srcdoc, not innerHTML: the document is a whole page with its own stylesheet, and it must
+         not share a styling context with the Ionic shell in either direction. -->
+    <iframe
+      id="cd-preview-frame"
+      class="cd-preview-frame"
+      title="Document preview"
+      [srcdoc]="safeHtml()"
+    ></iframe>
+  }
+</ion-content>

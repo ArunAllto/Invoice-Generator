@@ -153,6 +153,31 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Dashboard, documents list, clients list, settings hub | Written and rendering |
 | **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override |
 
+### Dependencies
+
+The tree carries only what the app currently uses. Packages for unwritten features were removed
+rather than left installed, so `node_modules` reflects working code and not intentions.
+
+Re-add them as each feature is built:
+
+| Feature | Reinstall |
+|---|---|
+| DOCX export (§10.3) | `npm i docx buffer` — and restore the `Buffer` polyfill at the top of `src/main.ts`; `docx` fails obscurely without it |
+| PDF / share / save (§10.2, §10.5) | `npm i @capacitor/filesystem @capacitor/share` |
+| Logo and signature capture (§7.1, §7.2) | `npm i @capacitor/camera` |
+| Android build (§12) | `npm i @capacitor/android` then `npx cap add android` |
+| Splash and status bar polish | `npm i @capacitor/splash-screen @capacitor/status-bar` |
+
+Kept deliberately even though nothing imports them directly:
+
+- **`sql.js`** — pinned to exactly `1.11.0`. Its `sql-wasm.wasm` is copied to `/assets` by an
+  `angular.json` rule and must match jeep-sqlite's bundled glue; a newer build fails with
+  `LinkError` from `WebAssembly.instantiate`.
+- **`rxjs`, `tslib`, `@angular/common`, `@angular/compiler`** — required by Angular itself.
+- **`@capacitor/cli`** — the tool that will run `cap add android` and `cap sync`.
+
+---
+
 ### Not yet written
 
 - **Preview and export** (§10) — PDF, DOCX and PNG all need Capacitor equivalents of

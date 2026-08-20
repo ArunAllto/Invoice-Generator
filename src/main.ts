@@ -1,18 +1,12 @@
 /**
  * Application entry point.
  *
- * The `buffer` polyfill comes first, before anything can import `docx`. It is the same trap the
- * React Native tree documented: `docx` reaches for a global `Buffer` that browsers do not
- * provide, and without this the failure is a `ReferenceError` from deep inside the packer,
- * nowhere near the actual cause.
+ * Deliberately bare. When DOCX export is written it will need a `Buffer` polyfill installed here,
+ * before anything can import `docx` — that library reaches for a global `Buffer` browsers do not
+ * provide, and the failure is a `ReferenceError` from deep inside its packer, nowhere near the
+ * cause. The polyfill and the `buffer` dependency were removed with `docx` itself rather than
+ * left as dead weight; re-add all three together.
  */
-
-import { Buffer } from 'buffer';
-
-const globalScope = globalThis as typeof globalThis & { Buffer?: typeof Buffer };
-if (typeof globalScope.Buffer === 'undefined') {
-  globalScope.Buffer = Buffer;
-}
 
 import { bootstrapApplication } from '@angular/platform-browser';
 import { App } from './app/app';

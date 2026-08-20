@@ -1,13 +1,18 @@
 <!--
   The four tabs of §4.
 
+  There is deliberately no <ion-router-outlet> here. IonTabs renders its own, inside its
+  `.tabs-inner` wrapper, and wires the router to it. An extra one projected through <ng-content>
+  lands *after* that wrapper as an absolutely-positioned, full-viewport, empty box — and since
+  ion-router-outlet is `position: absolute; inset: 0`, it covered the entire app and swallowed every
+  tap, tab bar included. Nothing was visibly wrong, which is what made it hard to see: the pages
+  rendered normally underneath a transparent shield.
+
   Labels are always visible. `ion-tab-button` inherits the 44dp minimum from the global styles and
   nothing here fixes a height, so a larger system font grows the bar rather than clipping the
   labels — the defect the React Native tree had to fix by raising its bar to 64dp.
 -->
 <ion-tabs>
-  <ion-router-outlet />
-
   <ion-tab-bar slot="bottom">
     <ion-tab-button tab="home">
       <ion-icon name="home-outline" />

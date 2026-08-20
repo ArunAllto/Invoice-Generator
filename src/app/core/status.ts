@@ -57,6 +57,49 @@ export function canTransition(
 }
 
 /**
+ * Every status the user may move to from here.
+ *
+ * Exposed so the editor can build its status buttons from the transition table rather than from a
+ * hand-written list. A hand-written list is how the app came to offer "Mark as sent" on a draft
+ * invoice and then nothing at all on a sent one — leaving no way to cancel an invoice even though
+ * the table has always permitted it.
+ *
+ * `from` is meant to be the *derived* status (§6.4), which is what the user is looking at:
+ * `overdue` and `expired` are keys in the table for exactly this reason.
+ */
+export function allowedTransitions(
+  type: DocumentType,
+  from: DocumentStatus,
+): readonly DocumentStatus[] {
+  return TRANSITIONS[type][from] ?? [];
+}
+
+/**
+ * Button wording for a transition.
+ *
+ * Phrased as the action, not the destination state — "Cancel invoice" rather than "Cancelled" —
+ * because a button naming a state reads as a filter rather than something that will happen when
+ * pressed. Cancelling names the document type, since it is the one transition serious enough that
+ * the owner should see what they are about to cancel.
+ */
+export function transitionLabel(type: DocumentType, to: DocumentStatus): string {
+  switch (to) {
+    case 'draft':
+      return 'Move back to draft';
+    case 'issued':
+      return 'Issue receipt';
+    case 'cancelled':
+      return type === 'invoice'
+        ? 'Cancel invoice'
+        : type === 'receipt'
+          ? 'Cancel receipt'
+          : 'Cancel quotation';
+    default:
+      return `Mark as ${statusLabel(to).toLowerCase()}`;
+  }
+}
+
+/**
  * Whether a document's content may still be edited.
  *
  * §6.4 makes issued receipts immutable, which is the point of a receipt: it is evidence

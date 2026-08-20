@@ -746,6 +746,180 @@ export class DocumentsRepository {
     return { document, lines };
   }
 
+  /**
+   * Attach a client to a document, or detach one.
+   *
+   * Writes the snapshot as well as the id, because §5.4 wants the document to carry its own copy of
+   * whoever it was addressed to. Taking the snapshot *here* rather than only at creation is the
+   * point: a document created as a walk-in and later assigned to a client would otherwise keep an
+   * empty client block for ever, and one reassigned to a different client would print the old one.
+   *
+   * Passing `null` clears both, which §7.4 renders as no client block at all rather than an empty
+   * heading.
+   */
+  async setClient(documentId: string, clientId: string | null): Promise<void> {
+    const client = clientId ? await this.masters.getClient(clientId) : null;
+    const snapshot = client ? this.masters.clientToSnapshot(client) : null;
+    await this.db.run(
+      'UPDATE documents SET client_id = ?, client_snapshot = ?, updated_at = ? WHERE id = ?;',
+      [
+        client ? client.id : null,
+        // `client_snapshot` is NOT NULL, so "no client" is stored as the JSON literal `null` — the
+        // same convention `documentParams` uses. Passing SQL NULL here fails the constraint, and
+        // the failure surfaces only as a toast, which makes it look like the button did nothing.
+        JSON.stringify(snapshot ?? null),
+        nowIsoWithOffset(),
+        documentId,
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Payments (§6.5)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Record a payment against an invoice.
+   *
+   * Nothing is written to the invoice itself. `paid`, `partially_paid` and the outstanding balance
+   * are derived on every read from the sum of this table (§6.4), so a stored copy would be a second
+   * truth to keep in step — and the one that goes stale silently. Deleting a payment therefore needs
+   * no compensating update either.
+   *
+   * The amount is clamped at zero rather than rejected. A negative payment is nonsense the UI should
+   * not offer, but turning it into an exception here would make a refund typo abort a save; zero is
+   * visible in the list and can be deleted.
+   */
+  async addPayment(input: {
+    invoiceId: string;
+    amount: Paise;
+    paidOn?: string;
+    method?: PaymentMethod;
+    reference?: string;
+    notes?: string;
+  }): Promise<Payment> {
+    const now = nowIsoWithOffset();
+    const payment: Payment = {
+      id: uuid(),
+      invoiceId: input.invoiceId,
+      amount: Math.max(0, Math.trunc(input.amount)),
+      paidOn: isoDateOnly(input.paidOn ?? todayIso()),
+      method: input.method ?? 'cash',
+      reference: input.reference ?? '',
+      notes: input.notes ?? '',
+      receiptDocumentId: null,
+      createdAt: now,
+    };
+
+    await this.db.run(
+      `INSERT INTO payments (id, invoice_id, amount, paid_on, method, reference, notes,
+                             receipt_document_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+        payment.id,
+        payment.invoiceId,
+        payment.amount,
+        payment.paidOn,
+        payment.method,
+        payment.reference,
+        payment.notes,
+        payment.receiptDocumentId,
+        payment.createdAt,
+      ],
+    );
+    return payment;
+  }
+
+  async deletePayment(id: string): Promise<void> {
+    await this.db.run('DELETE FROM payments WHERE id = ?;', [id]);
+  }
+
+  async listPayments(invoiceId: string): Promise<Payment[]> {
+    const rows = await this.db.query<PaymentRow>(
+      'SELECT * FROM payments WHERE invoice_id = ? ORDER BY paid_on, created_at;',
+      [invoiceId],
+    );
+    return rows.map((row) => this.mapPayment(row));
+  }
+
+  /**
+   * Turn a payment into a receipt document, and link the two.
+   *
+   * The receipt is a document in its own right — it gets a number from the receipt series, carries
+   * its own snapshots, and can be previewed and sent like anything else. `linked_document_id` points
+   * back at the invoice so the receipt can name what it settles, and `receipt_document_id` on the
+   * payment stops a second receipt being raised for money already acknowledged.
+   *
+   * The invoice's own line items are deliberately *not* copied. A receipt says "we received ₹X
+   * against invoice N", not "here is that invoice again": §5.4 wants one line describing the
+   * payment, so a part-payment does not print a full itemised bill that looks settled.
+   */
+  async issueReceiptForPayment(paymentId: string): Promise<FullDocument | null> {
+    const payment = await this.db.first<PaymentRow>('SELECT * FROM payments WHERE id = ?;', [
+      paymentId,
+    ]);
+    if (!payment) return null;
+    if (payment.receipt_document_id) return this.get(payment.receipt_document_id);
+
+    const invoice = await this.get(payment.invoice_id);
+    if (!invoice) return null;
+
+    const receipt = await this.create({
+      type: 'receipt',
+      clientId: invoice.document.clientId,
+      issueDate: payment.paid_on,
+    });
+
+    const label = invoice.document.number.trim().length > 0
+      ? `Payment received against invoice ${invoice.document.number}`
+      : 'Payment received';
+
+    const line: LineItem = {
+      id: uuid(),
+      documentId: receipt.document.id,
+      position: 0,
+      catalogueItemId: null,
+      priceSource: 'custom',
+      name: label,
+      description: payment.reference.trim().length > 0 ? `Reference: ${payment.reference}` : '',
+      hsnSac: '',
+      qtyMilli: 1000,
+      unit: '',
+      rate: payment.amount,
+      // A receipt records money already taken, tax included. Charging tax on top would invent an
+      // amount nobody paid.
+      taxRateBp: 0,
+      discountBp: 0,
+      isFree: false,
+      lineTotal: payment.amount,
+    };
+
+    const saved = await this.save({
+      document: {
+        ...receipt.document,
+        linkedDocumentId: invoice.document.id,
+        paymentMethod: asPaymentMethod(payment.method),
+        paymentReference: payment.reference,
+        paymentAmount: payment.amount,
+        taxMode: 'none',
+        // Round-off is on by default for a normal document, where rounding to the rupee is a
+        // courtesy. On a receipt it is a lie: rounding a ₹1,000.50 payment would print a receipt
+        // for ₹1,001.00 and acknowledge fifty paise nobody handed over.
+        roundOffEnabled: false,
+        notes: payment.notes,
+      },
+      lines: [line],
+    });
+
+    await this.db.run('UPDATE payments SET receipt_document_id = ? WHERE id = ?;', [
+      saved.document.id,
+      paymentId,
+    ]);
+
+    const full = await this.get(saved.document.id);
+    return full;
+  }
+
   async setStatus(id: string, status: DocumentStatus): Promise<void> {
     await this.db.run('UPDATE documents SET status = ?, updated_at = ? WHERE id = ?;', [
       status,

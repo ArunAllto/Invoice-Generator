@@ -51,12 +51,19 @@ import {
   parseQuantityToMilli,
 } from '../../../core/money';
 import { isDuplicateNumber, previewNextNumber } from '../../../core/numbering';
-import { deriveStatus, isEditable, statusLabel } from '../../../core/status';
-import type { DiscountMode, DocumentStatus, TaxMode } from '../../../core/types';
+import {
+  allowedTransitions,
+  deriveStatus,
+  isEditable,
+  statusLabel,
+  transitionLabel,
+} from '../../../core/status';
+import type { DiscountMode, DocumentStatus, Paise, TaxMode } from '../../../core/types';
 import { todayIso } from '../../../core/dates';
-import type { LineItem } from '../../../data/repositories/documents.repository';
+import type { LineItem, Payment } from '../../../data/repositories/documents.repository';
 import { DocumentsRepository } from '../../../data/repositories/documents.repository';
 import { MastersRepository, type TaxPreset } from '../../../data/repositories/masters.repository';
+import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
 import { PaisePipe } from '../../../shared/pipes/paise.pipe';
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { ToastService } from '../../../shared/ui/toast.service';
@@ -90,6 +97,7 @@ import { DocumentEditorStore } from '../document-editor.store';
     IonBadge,
     IonSpinner,
     PaisePipe,
+    IsoDatePipe,
     StatusChipComponent,
   ],
   templateUrl: './document-editor.page.html',
@@ -156,25 +164,26 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     return 'Document';
   });
 
-  /** Status transitions the user may choose (§6.4). */
+  /**
+   * Status transitions the user may choose (§6.4).
+   *
+   * Built from `allowedTransitions` rather than spelled out here. The hand-written version this
+   * replaced offered "Mark as sent" on a draft invoice and then nothing whatsoever once it was sent —
+   * so an invoice could never be cancelled, though the domain has always permitted it, and an issued
+   * receipt could not be cancelled either. Reading the transition table means the buttons cannot
+   * disagree with what `setStatus` will actually accept.
+   *
+   * The *derived* status is the starting point, because that is the status the user is looking at: an
+   * overdue invoice is stored as `sent`, and offering it "Mark as sent" would be nonsense.
+   */
   readonly statusActions = computed<ReadonlyArray<{ label: string; status: DocumentStatus }>>(() => {
     const doc = this.document();
     const shown = this.derived()?.status;
-    if (!doc) return [];
-    if (doc.type === 'quotation') {
-      if (doc.status === 'draft') return [{ label: 'Mark as sent', status: 'sent' }];
-      if (shown === 'sent' || shown === 'expired') {
-        return [
-          { label: 'Mark as accepted', status: 'accepted' },
-          { label: 'Mark as rejected', status: 'rejected' },
-        ];
-      }
-      return [];
-    }
-    if (doc.type === 'invoice') {
-      return doc.status === 'draft' ? [{ label: 'Mark as sent', status: 'sent' }] : [];
-    }
-    return doc.status === 'draft' ? [{ label: 'Issue receipt', status: 'issued' }] : [];
+    if (!doc || !shown) return [];
+    return allowedTransitions(doc.type, shown).map((status) => ({
+      label: transitionLabel(doc.type, status),
+      status,
+    }));
   });
 
   constructor() {
@@ -185,6 +194,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await this.store.load(this.id());
     this.taxPresets.set(await this.masters.listTaxPresets());
     await this.refreshNumberPreview();
+    await this.refreshPayments();
   }
 
   /** §6.3: flush on leaving, so the draft is intact even if the app is killed straight after. */
@@ -402,6 +412,224 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
 
   onRoundOff(enabled: boolean): void {
     this.store.patchDocument({ roundOffEnabled: enabled });
+  }
+
+  // -------------------------------------------------------------------------
+  // Client (§7.4)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Choose the client this document is addressed to.
+   *
+   * A radio alert rather than a search screen: this is a single-owner app whose client list is
+   * dozens long, not thousands, and a full-screen picker would be three taps where one will do. If
+   * the list ever outgrows that, this is the one place to replace.
+   *
+   * Archived clients are left out (§5.2) — they exist so old documents keep working, not so new
+   * ones can be addressed to them.
+   */
+  async chooseClient(): Promise<void> {
+    const doc = this.document();
+    if (!doc) return;
+    await this.store.flush();
+
+    const clients = await this.masters.listClients();
+    if (clients.length === 0) {
+      this.toast.show('No clients yet. Add one on the Clients tab.');
+      return;
+    }
+
+    const alert = await this.alerts.create({
+      header: 'Client',
+      inputs: [
+        // §7.4: no client is a real choice, not an absence of one — a walk-in sale prints no client
+        // block at all, and the owner needs to be able to go back to that.
+        {
+          type: 'radio' as const,
+          label: 'No client / walk-in',
+          value: '',
+          checked: doc.clientId === null,
+        },
+        ...clients.map((client) => ({
+          type: 'radio' as const,
+          label: client.company || client.name,
+          value: client.id,
+          checked: client.id === doc.clientId,
+        })),
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Choose',
+          handler: (clientId: string) => {
+            void this.applyClient(doc.id, clientId === '' ? null : clientId);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async applyClient(documentId: string, clientId: string | null): Promise<void> {
+    try {
+      await this.repository.setClient(documentId, clientId);
+      // Reload rather than patch: the snapshot is built in the repository, and copying it back by
+      // hand here would be a second place for §5.4 to be got wrong.
+      await this.store.reload(documentId);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Payments (§6.5)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Payments recorded against this invoice.
+   *
+   * Kept as its own signal rather than read off the store, because recording a payment changes no
+   * document field — `paid`, `partially_paid` and the balance are all derived from this table on
+   * read (§6.4). The store has nothing to tell it that anything happened, so the list refreshes
+   * itself and then asks the store to reload so the status chip catches up.
+   */
+  readonly paymentList = signal<Payment[]>([]);
+
+  readonly paidTotal = computed<Paise>(() =>
+    this.paymentList().reduce((sum, payment) => sum + payment.amount, 0),
+  );
+
+  readonly balanceDue = computed<Paise>(() =>
+    Math.max(0, this.grandTotal() - this.paidTotal()),
+  );
+
+  /** Only invoices take payments. A quotation is not owed and a receipt *is* the acknowledgement. */
+  readonly acceptsPayments = computed(() => this.document()?.type === 'invoice');
+
+  private async refreshPayments(): Promise<void> {
+    const doc = this.document();
+    if (!doc || doc.type !== 'invoice') {
+      this.paymentList.set([]);
+      return;
+    }
+    this.paymentList.set(await this.repository.listPayments(doc.id));
+  }
+
+  /**
+   * Record a payment.
+   *
+   * The amount defaults to the outstanding balance, which is what is being paid the overwhelming
+   * majority of the time, and the field is still editable for a part payment. Entering it through
+   * `parseCurrencyToPaise` rather than `Number()` keeps the one decimal parser of §16.5 in charge —
+   * "1,250.50" and "1250.5" both have to mean the same thing here as everywhere else.
+   */
+  async recordPayment(): Promise<void> {
+    const doc = this.document();
+    if (!doc || doc.type !== 'invoice') return;
+    await this.store.flush();
+
+    const alert = await this.alerts.create({
+      header: 'Record a payment',
+      inputs: [
+        {
+          name: 'amount',
+          type: 'text',
+          value: formatPaise(this.balanceDue()),
+          placeholder: 'Amount received',
+          attributes: { inputmode: 'decimal' },
+        },
+        { name: 'paidOn', type: 'date', value: todayIso() },
+        { name: 'reference', type: 'text', placeholder: 'Reference (UPI ref, cheque no.)' },
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Record',
+          handler: (values: { amount?: string; paidOn?: string; reference?: string }) => {
+            void this.savePayment(doc.id, values);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async savePayment(
+    invoiceId: string,
+    values: { amount?: string; paidOn?: string; reference?: string },
+  ): Promise<void> {
+    const amount = parseCurrencyToPaise(values.amount ?? '');
+    if (amount === null || amount <= 0) {
+      this.toast.show('Enter an amount greater than zero.');
+      return;
+    }
+    try {
+      await this.repository.addPayment({
+        invoiceId,
+        amount,
+        paidOn: values.paidOn ?? todayIso(),
+        reference: (values.reference ?? '').trim(),
+      });
+      await this.afterPaymentChange(invoiceId);
+      this.toast.show(`Recorded ${formatPaise(amount)}.`);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  /** Remove a payment, after confirming — it changes what the invoice says is owed. */
+  async removePayment(payment: Payment): Promise<void> {
+    const alert = await this.alerts.create({
+      header: 'Delete this payment?',
+      message: `${formatPaise(payment.amount)} received on ${payment.paidOn}. The invoice will show that much as outstanding again.`,
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: () => {
+            void this.confirmRemovePayment(payment);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async confirmRemovePayment(payment: Payment): Promise<void> {
+    try {
+      await this.repository.deletePayment(payment.id);
+      await this.afterPaymentChange(payment.invoiceId);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  /**
+   * Raise a receipt for a payment and open it.
+   *
+   * The receipt is a document of its own, so the owner lands in its editor where they can preview
+   * and send it. A payment that already has one navigates to the existing receipt rather than
+   * raising a second: two receipts for one payment is a bookkeeping problem, not a convenience.
+   */
+  async issueReceipt(payment: Payment): Promise<void> {
+    try {
+      const receipt = await this.repository.issueReceiptForPayment(payment.id);
+      if (!receipt) {
+        this.toast.show('That payment could not be turned into a receipt.');
+        return;
+      }
+      await this.refreshPayments();
+      await this.router.navigate(['/document', receipt.document.id]);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  /** Reload the payment list and the document, so the derived status and chip follow. */
+  private async afterPaymentChange(invoiceId: string): Promise<void> {
+    await this.refreshPayments();
+    await this.store.reload(invoiceId);
   }
 
   // -------------------------------------------------------------------------

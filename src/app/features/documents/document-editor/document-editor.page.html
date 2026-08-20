@@ -126,8 +126,15 @@
               }
             </ion-label>
           </ion-item>
+          <div class="cd-inline-actions">
+            <ion-button expand="block" fill="outline" (click)="chooseClient()">
+              {{ document()!.clientId ? 'Change client' : 'Choose a client' }}
+            </ion-button>
+          </div>
+          <!-- §5.4: choosing here re-takes the snapshot, so the document prints whoever is on it now. -->
           <ion-note class="cd-inline-note">
-            Choosing a client is not wired up in this build yet.
+            The client is copied onto this document as you choose them, so editing them later will
+            not change what this document says.
           </ion-note>
         </div>
       </ion-accordion>
@@ -450,7 +457,80 @@
         </div>
       </ion-accordion>
 
-      <!-- 5. Notes -->
+      <!-- 5. Payments received (§6.5). Invoices only: a quotation is not owed, and a receipt is
+           itself the acknowledgement. -->
+      @if (acceptsPayments()) {
+        <ion-accordion value="payments">
+          <ion-item slot="header" color="light">
+            <ion-label>Payments received</ion-label>
+            <ion-note slot="end">{{ paidTotal() | paise }}</ion-note>
+          </ion-item>
+          <div slot="content">
+            <ion-list>
+              @for (payment of paymentList(); track payment.id) {
+                <ion-item>
+                  <ion-label>
+                    <h3 class="cd-amount">{{ payment.amount | paise }}</h3>
+                    <p>
+                      {{ payment.paidOn | isoDate }}
+                      @if (payment.reference) {
+                        · {{ payment.reference }}
+                      }
+                    </p>
+                  </ion-label>
+                  <div slot="end" class="cd-pills">
+                    <ion-button
+                      size="small"
+                      [fill]="payment.receiptDocumentId ? 'clear' : 'outline'"
+                      (click)="issueReceipt(payment)"
+                    >
+                      {{ payment.receiptDocumentId ? 'Receipt' : 'Make receipt' }}
+                    </ion-button>
+                    <ion-button
+                      size="small"
+                      fill="clear"
+                      color="danger"
+                      aria-label="Delete this payment"
+                      (click)="removePayment(payment)"
+                    >
+                      <ion-icon slot="icon-only" name="close-outline" />
+                    </ion-button>
+                  </div>
+                </ion-item>
+              } @empty {
+                <ion-item lines="none">
+                  <ion-label class="cd-muted">Nothing received yet.</ion-label>
+                </ion-item>
+              }
+            </ion-list>
+
+            <ion-list>
+              <ion-item>
+                <ion-label>Total received</ion-label>
+                <ion-note slot="end" class="cd-amount">{{ paidTotal() | paise }}</ion-note>
+              </ion-item>
+              <ion-item>
+                <ion-label><strong>Balance due</strong></ion-label>
+                <ion-note slot="end" class="cd-amount" color="primary">
+                  <strong>{{ balanceDue() | paise }}</strong>
+                </ion-note>
+              </ion-item>
+            </ion-list>
+
+            <div class="cd-inline-actions">
+              <ion-button expand="block" fill="outline" (click)="recordPayment()">
+                Record a payment
+              </ion-button>
+            </div>
+            <!-- §6.4: nothing here writes a status. Part paid / paid are read back off this list. -->
+            <ion-note class="cd-inline-note">
+              The status follows from this list — record enough and the invoice reads as paid.
+            </ion-note>
+          </div>
+        </ion-accordion>
+      }
+
+      <!-- 6. Notes -->
       <ion-accordion value="notes">
         <ion-item slot="header" color="light">
           <ion-label>Notes</ion-label>
@@ -468,7 +548,7 @@
         </div>
       </ion-accordion>
 
-      <!-- 6. Terms -->
+      <!-- 7. Terms -->
       <ion-accordion value="terms">
         <ion-item slot="header" color="light">
           <ion-label>Terms &amp; conditions</ion-label>

@@ -1,4 +1,5 @@
 import {
+  allowedTransitions,
   canHardDelete,
   canTransition,
   deriveStatus,
@@ -7,8 +8,9 @@ import {
   isUnpaidInvoice,
   statusLabel,
   statusTone,
+  transitionLabel,
 } from './status';
-import type { DocumentStatus } from './types';
+import type { DocumentStatus, DocumentType } from './types';
 
 const TODAY = '2026-08-18';
 const RUPEE = 100;
@@ -279,5 +281,85 @@ describe('status presentation', () => {
     expect(statusTone('overdue')).toBe('danger');
     expect(statusTone('paid')).toBe('positive');
     expect(statusTone('draft')).toBe('neutral');
+  });
+});
+
+/**
+ * These guard the editor's status buttons, which are now generated from `allowedTransitions`
+ * rather than hand-listed. The bug being pinned here: a sent invoice offered no actions at all, so
+ * it could never be cancelled even though the transition table has always permitted it.
+ */
+describe('allowedTransitions', () => {
+  it('agrees with canTransition in both directions', () => {
+    const types: DocumentType[] = ['quotation', 'invoice', 'receipt'];
+    const all: DocumentStatus[] = [
+      'draft',
+      'sent',
+      'accepted',
+      'rejected',
+      'expired',
+      'partially_paid',
+      'paid',
+      'overdue',
+      'cancelled',
+      'issued',
+    ];
+    for (const type of types) {
+      for (const from of all) {
+        const allowed = allowedTransitions(type, from);
+        for (const to of all) {
+          expect(canTransition(type, from, to)).toBe(allowed.includes(to));
+        }
+      }
+    }
+  });
+
+  it('lets an issued invoice be cancelled, however it is currently shown', () => {
+    for (const shown of ['sent', 'partially_paid', 'overdue'] as DocumentStatus[]) {
+      expect(allowedTransitions('invoice', shown)).toContain('cancelled');
+    }
+  });
+
+  it('offers nothing on a paid or cancelled invoice', () => {
+    expect(allowedTransitions('invoice', 'paid')).toEqual([]);
+    expect(allowedTransitions('invoice', 'cancelled')).toEqual([]);
+  });
+
+  it('lets an issued receipt be cancelled but not re-issued or edited back to draft', () => {
+    expect(allowedTransitions('receipt', 'issued')).toEqual(['cancelled']);
+  });
+
+  it('returns an empty list for a status that type never reaches', () => {
+    expect(allowedTransitions('quotation', 'paid')).toEqual([]);
+    expect(allowedTransitions('receipt', 'overdue')).toEqual([]);
+  });
+});
+
+describe('transitionLabel', () => {
+  it('names the document type when cancelling, so the owner sees what they are cancelling', () => {
+    expect(transitionLabel('invoice', 'cancelled')).toBe('Cancel invoice');
+    expect(transitionLabel('receipt', 'cancelled')).toBe('Cancel receipt');
+    expect(transitionLabel('quotation', 'cancelled')).toBe('Cancel quotation');
+  });
+
+  it('phrases the rest as an action rather than a state', () => {
+    expect(transitionLabel('invoice', 'sent')).toBe('Mark as sent');
+    expect(transitionLabel('quotation', 'accepted')).toBe('Mark as accepted');
+    expect(transitionLabel('receipt', 'issued')).toBe('Issue receipt');
+    expect(transitionLabel('invoice', 'draft')).toBe('Move back to draft');
+  });
+
+  it('gives every reachable transition a non-empty label with no underscores', () => {
+    const types: DocumentType[] = ['quotation', 'invoice', 'receipt'];
+    const froms: DocumentStatus[] = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'partially_paid', 'overdue', 'issued'];
+    for (const type of types) {
+      for (const from of froms) {
+        for (const to of allowedTransitions(type, from)) {
+          const label = transitionLabel(type, to);
+          expect(label).not.toBe('');
+          expect(label).not.toContain('_');
+        }
+      }
+    }
   });
 });

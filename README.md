@@ -202,7 +202,24 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Business profile (§7, §9.4) | Working: save, GSTIN gate, bank details |
 | Document preview (§10.2) | Working: renders the real A4 HTML in an iframe, page count, browser print dialogue |
 | About (§13.5) | Written |
-| **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override |
+| **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override, client picker |
+| Payments and receipts (§6.5) | Working: record and delete payments, derived part-paid / paid, raise a receipt from a payment |
+| Status lifecycle (§6.4) | Working: buttons generated from the transition table, so cancel is offered wherever the domain allows it |
+
+### Known gaps
+
+Found by walking every screen against the spec, and not yet built:
+
+| Gap | Effect |
+|---|---|
+| Document blocks have no UI (§6.2) | `DocumentBlocks` has 16 toggles — HSN column, bank details, UPI QR, signature, tax summary — and the store exposes `setBlocks`, but nothing renders them. The defaults are all you get, so the UPI QR cannot be switched on from the app. |
+| Item catalogue screen (§7.3) | Seeded items work and "Add from catalogue" lists them, but there is no screen to add, edit or price an item. The empty-catalogue toast points at a settings row that does not exist. |
+| Logo, signature, branding (§7.1, §7.2) | The renderer accepts both as `data:` URIs and the snapshot has columns for them; nothing captures them. Needs `@capacitor/camera`. |
+| File export (§10.2–10.5) | Preview and the browser print dialogue work. PDF, DOCX and PNG to a file, and sharing, are not written. |
+| Backup and restore (§13) | No UI. |
+| Custom fields, tax presets, numbering, terms and defaults screens | The data layer and repositories are complete for all of them; the settings screens are not. Marked "Soon" in the app rather than left to look broken. |
+
+---
 
 ### Dependencies
 
@@ -218,6 +235,7 @@ Re-add them as each feature is built:
 | Logo and signature capture (§7.1, §7.2) | `npm i @capacitor/camera` |
 | Android build (§12) | `npm i @capacitor/android` then `npx cap add android` |
 | Splash and status bar polish | `npm i @capacitor/splash-screen @capacitor/status-bar` |
+
 
 Kept deliberately even though nothing imports them directly:
 

@@ -1,7 +1,9 @@
 import {
   applyBasisPoints,
+  currencyFormat,
   formatBasisPoints,
   formatMilli,
+  formatMoneyIn,
   formatPaise,
   groupIndian,
   mulDivRound,
@@ -293,5 +295,46 @@ describe('formatBasisPoints', () => {
     expect(formatBasisPoints(0)).toBe('0');
     expect(formatBasisPoints(10_000)).toBe('100');
     expect(formatBasisPoints(1)).toBe('0.01');
+  });
+});
+
+/**
+ * Currency formatting (§9.1).
+ *
+ * Pinned because the renderer previously tested for `'INR'` and emitted *no* symbol for anything
+ * else — so a document billed in dollars printed bare numbers, with Indian lakh grouping still
+ * applied. Both halves are wrong and neither is visible until someone changes the currency.
+ */
+describe('currencyFormat / formatMoneyIn', () => {
+  it('uses the rupee and lakh grouping for INR', () => {
+    expect(formatMoneyIn(12345678, 'INR')).toBe('₹1,23,456.78');
+  });
+
+  it('uses thousands grouping for everything else', () => {
+    expect(formatMoneyIn(12345678, 'USD')).toBe('$123,456.78');
+    expect(formatMoneyIn(12345678, 'EUR')).toBe('€123,456.78');
+    expect(formatMoneyIn(12345678, 'GBP')).toBe('£123,456.78');
+    expect(formatMoneyIn(12345678, 'SGD')).toBe('S$123,456.78');
+  });
+
+  it('spaces a code used as its own symbol', () => {
+    expect(formatMoneyIn(150000, 'AED')).toBe('AED 1,500.00');
+  });
+
+  it('never renders a bare number for an unknown currency', () => {
+    expect(formatMoneyIn(150000, 'JPY')).toBe('JPY 1,500.00');
+    expect(formatMoneyIn(150000, 'zar')).toBe('ZAR 1,500.00');
+  });
+
+  it('is case and whitespace insensitive', () => {
+    expect(formatMoneyIn(100, ' inr ')).toBe(formatMoneyIn(100, 'INR'));
+  });
+
+  it('falls back to no symbol only when the code is empty', () => {
+    expect(formatMoneyIn(150000, '')).toBe('1,500.00');
+  });
+
+  it('lets the caller override decimals', () => {
+    expect(formatMoneyIn(150000, 'USD', { decimals: false })).toBe('$1,500');
   });
 });

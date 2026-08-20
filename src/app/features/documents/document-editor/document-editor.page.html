@@ -110,6 +110,28 @@
               {{ action.label }}
             </ion-button>
           }
+
+          <!-- §6.8: the quotation is never rewritten; the two documents are linked instead. -->
+          @if (canConvert()) {
+            <ion-button expand="block" (click)="convertToInvoice()">
+              Raise an invoice from this
+            </ion-button>
+          }
+          @if (relatedDocument(); as related) {
+            <ion-item button="true" lines="none" (click)="openRelated()">
+              <ion-label>
+                <h3>{{ related.number || 'Draft' }}</h3>
+                <p>
+                  {{ document()!.type === 'quotation' ? 'Invoiced as' : 'Raised from' }} this
+                  document
+                </p>
+              </ion-label>
+              <cd-status-chip slot="end" [status]="related.derivedStatus" />
+            </ion-item>
+          }
+          <ion-button expand="block" fill="clear" (click)="duplicateDocument()">
+            Duplicate as a new draft
+          </ion-button>
         </div>
       </ion-accordion>
 
@@ -480,11 +502,14 @@
                   <ion-label>
                     <h3 class="cd-amount">{{ payment.amount | paise }}</h3>
                     <p>
-                      {{ payment.paidOn | isoDate }}
+                      {{ payment.paidOn | isoDate }} · {{ methodLabel(payment.method) }}
                       @if (payment.reference) {
                         · {{ payment.reference }}
                       }
                     </p>
+                    @if (payment.notes) {
+                      <p class="cd-muted">{{ payment.notes }}</p>
+                    }
                   </ion-label>
                   <div slot="end" class="cd-pills">
                     <ion-button
@@ -576,7 +601,74 @@
         </div>
       </ion-accordion>
 
-      <!-- 7. Notes -->
+      <!-- 7. This document's own look and currency (§10.6, §9.1). -->
+      <ion-accordion value="look">
+        <ion-item slot="header" color="light">
+          <ion-label>This document's look</ion-label>
+        </ion-item>
+        <div slot="content">
+          <!-- §10.6: worth saying, because the fear with a template switch is that a total moves. -->
+          <ion-note class="cd-inline-note">
+            Overrides your default for this document only. Changing it moves no amount — only the
+            styling.
+          </ion-note>
+
+          <ion-list>
+            <ion-radio-group
+              [value]="document()!.templateId"
+              (ionChange)="onTemplate($any($event.detail).value)"
+            >
+              @for (option of templateOptions; track option.value) {
+                <ion-item>
+                  <ion-radio [value]="option.value" labelPlacement="end" justify="start">
+                    {{ option.label }}
+                  </ion-radio>
+                </ion-item>
+              }
+            </ion-radio-group>
+          </ion-list>
+
+          <div class="cd-section-title">Accent colour</div>
+          <div class="cd-accent-row">
+            @for (swatch of accentSwatches; track swatch) {
+              <button
+                type="button"
+                class="cd-accent-chip"
+                [class.cd-accent-chosen]="currentAccent() === swatch"
+                [style.background]="swatch"
+                [attr.aria-label]="'Use accent ' + swatch"
+                [attr.aria-pressed]="currentAccent() === swatch"
+                (click)="onAccent(swatch)"
+              ></button>
+            }
+          </div>
+          <ion-note class="cd-inline-note">
+            The Bold template is built around this colour; the others use it for rules and headings.
+          </ion-note>
+
+          <ion-list>
+            <ion-item>
+              <ion-select
+                label="Currency"
+                labelPlacement="stacked"
+                [value]="document()!.currency"
+                (ionChange)="onCurrency($any($event.detail).value)"
+              >
+                @for (code of currencyOptions; track code) {
+                  <ion-select-option [value]="code">{{ code }}</ion-select-option>
+                }
+              </ion-select>
+            </ion-item>
+          </ion-list>
+          <!-- Honest about the limit: this changes the symbol, not the arithmetic. -->
+          <ion-note class="cd-inline-note">
+            Changes the symbol on the document. Amounts are not converted — enter them in the
+            currency you are billing in.
+          </ion-note>
+        </div>
+      </ion-accordion>
+
+      <!-- 8. Notes -->
       <ion-accordion value="notes">
         <ion-item slot="header" color="light">
           <ion-label>Notes</ion-label>
@@ -594,7 +686,7 @@
         </div>
       </ion-accordion>
 
-      <!-- 8. Terms -->
+      <!-- 9. Terms -->
       <ion-accordion value="terms">
         <ion-item slot="header" color="light">
           <ion-label>Terms &amp; conditions</ion-label>

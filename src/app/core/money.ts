@@ -171,21 +171,50 @@ export interface FormatMoneyOptions {
   symbol?: boolean;
   /** Always show two decimals. Default true — invoices show 7,500.00, not 7,500. */
   decimals?: boolean;
-  /** Indian lakh/crore grouping. Default true. */
+  /** Indian lakh/crore grouping. Default true. Superseded by `grouping` when that is given. */
   indianGrouping?: boolean;
+  /**
+   * How to group the whole part.
+   *
+   * Explicit, because `indianGrouping: false` has always meant "no grouping at all" rather than
+   * "group in thousands", and changing that meaning would silently reformat every existing caller.
+   */
+  grouping?: 'indian' | 'thousands' | 'none';
   /** Symbol to use when `symbol` is set. Default '₹'. */
   currencySymbol?: string;
 }
 
 /** Format integer paise for display. 750050 → "7,500.50". */
+/**
+ * Group in thousands: 123456789 -> "123,456,789".
+ *
+ * Needed because `groupIndian` is not a general grouper — lakh/crore placement is correct for
+ * rupees and wrong for every other currency, and a document billed in dollars showing '1,23,456' is
+ * a bug the owner would be blamed for.
+ */
+export function groupThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 export function formatPaise(amount: Paise, options: FormatMoneyOptions = {}): string {
-  const { symbol = false, decimals = true, indianGrouping = true, currencySymbol = '₹' } = options;
+  const {
+    symbol = false,
+    decimals = true,
+    indianGrouping = true,
+    currencySymbol = '₹',
+    grouping = indianGrouping ? 'indian' : 'none',
+  } = options;
   const negative = amount < 0;
   const abs = Math.abs(Math.trunc(amount));
   const whole = Math.floor(abs / 100);
   const frac = abs % 100;
 
-  const wholeStr = indianGrouping ? groupIndian(String(whole)) : String(whole);
+  const wholeStr =
+    grouping === 'indian'
+      ? groupIndian(String(whole))
+      : grouping === 'thousands'
+        ? groupThousands(String(whole))
+        : String(whole);
   // When decimals are switched off we still print them if they are non-zero: dropping
   // paise from a total would misstate the amount due, which is never an acceptable
   // formatting shortcut.
@@ -217,4 +246,48 @@ export function formatBasisPoints(rateBp: BasisPoints): string {
     .replace(/0+$/, '');
   const out = frac === '' ? String(whole) : `${whole}.${frac}`;
   return negative ? `-${out}` : out;
+}
+
+/**
+ * Currency symbols and grouping for the currencies the app offers (§9.1).
+ *
+ * Two facts per currency, not one. The symbol is the obvious part; the grouping matters just as
+ * much, because Indian lakh/crore grouping applied to a dollar amount produces `$1,23,456.00` —
+ * correct for rupees and wrong everywhere else. Anything unrecognised falls back to its own code as
+ * a prefix, which is ugly but unambiguous, and never to a bare number.
+ */
+export interface CurrencyFormat {
+  symbol: string;
+  grouping: 'indian' | 'thousands';
+}
+
+const CURRENCIES: Readonly<Record<string, CurrencyFormat>> = {
+  INR: { symbol: '₹', grouping: 'indian' },
+  USD: { symbol: '$', grouping: 'thousands' },
+  EUR: { symbol: '€', grouping: 'thousands' },
+  GBP: { symbol: '£', grouping: 'thousands' },
+  AED: { symbol: 'AED ', grouping: 'thousands' },
+  SGD: { symbol: 'S$', grouping: 'thousands' },
+};
+
+export function currencyFormat(code: string): CurrencyFormat {
+  const key = code.trim().toUpperCase();
+  return CURRENCIES[key] ?? { symbol: key.length > 0 ? `${key} ` : '', grouping: 'thousands' };
+}
+
+/**
+ * Format an amount in a given currency.
+ *
+ * The one entry point for money on a document, so a currency can never be honoured in one place and
+ * silently dropped in another — which is what happened when the renderer tested for `'INR'` and
+ * emitted no symbol at all for anything else.
+ */
+export function formatMoneyIn(amount: Paise, code: string, options: FormatMoneyOptions = {}): string {
+  const format = currencyFormat(code);
+  return formatPaise(amount, {
+    symbol: true,
+    currencySymbol: format.symbol,
+    grouping: format.grouping,
+    ...options,
+  });
 }

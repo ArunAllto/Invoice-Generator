@@ -31,6 +31,8 @@ import {
   IonLabel,
   IonList,
   IonNote,
+  IonRadio,
+  IonRadioGroup,
   IonSelect,
   IonSelectOption,
   IonSpinner,
@@ -67,9 +69,21 @@ import {
   statusLabel,
   transitionLabel,
 } from '../../../core/status';
-import type { DiscountMode, DocumentBlocks, DocumentStatus, Paise, TaxMode } from '../../../core/types';
+import type {
+  DiscountMode,
+  DocumentBlocks,
+  DocumentStatus,
+  Paise,
+  PaymentMethod,
+  TaxMode,
+  TemplateId,
+} from '../../../core/types';
 import { todayIso } from '../../../core/dates';
-import type { LineItem, Payment } from '../../../data/repositories/documents.repository';
+import type {
+  DocumentListItem,
+  LineItem,
+  Payment,
+} from '../../../data/repositories/documents.repository';
 import { DocumentsRepository } from '../../../data/repositories/documents.repository';
 import {
   MastersRepository,
@@ -114,6 +128,8 @@ import { DocumentEditorStore } from '../document-editor.store';
     IonToggle,
     IonCheckbox,
     IonNote,
+    IonRadio,
+    IonRadioGroup,
     IonBadge,
     IonSpinner,
     PaisePipe,
@@ -218,6 +234,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     this.taxPresets.set(await this.masters.listTaxPresets());
     await this.refreshNumberPreview();
     await this.refreshPayments();
+    await this.refreshRelated();
   }
 
   /** §6.3: flush on leaving, so the draft is intact even if the app is killed straight after. */
@@ -655,13 +672,22 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
         },
         { name: 'paidOn', type: 'date', value: todayIso() },
         { name: 'reference', type: 'text', placeholder: 'Reference (UPI ref, cheque no.)' },
+        { name: 'notes', type: 'text', placeholder: 'Note (optional)' },
       ],
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         {
-          text: 'Record',
-          handler: (values: { amount?: string; paidOn?: string; reference?: string }) => {
-            void this.savePayment(doc.id, values);
+          text: 'Next',
+          handler: (values: {
+            amount?: string;
+            paidOn?: string;
+            reference?: string;
+            notes?: string;
+          }) => {
+            // How it was paid is asked separately, because Ionic hands a radio group's value to the
+            // handler *instead of* the input map — mixing the two would mean scraping the amount back
+            // out of the DOM.
+            void this.askPaymentMethod(doc.id, values);
           },
         },
       ],
@@ -669,9 +695,55 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await alert.present();
   }
 
+  /** Which of the six §6.5 methods the money arrived by. Defaulted to UPI, the common case. */
+  private async askPaymentMethod(
+    invoiceId: string,
+    values: { amount?: string; paidOn?: string; reference?: string; notes?: string },
+  ): Promise<void> {
+    const alert = await this.alerts.create({
+      header: 'How was it paid?',
+      inputs: this.paymentMethods.map((method) => ({
+        type: 'radio' as const,
+        label: method.label,
+        value: method.value,
+        checked: method.value === 'upi',
+      })),
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Record',
+          handler: (method: PaymentMethod) => {
+            void this.savePayment(invoiceId, { ...values, method: method ?? 'upi' });
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  readonly paymentMethods: ReadonlyArray<{ value: PaymentMethod; label: string }> = [
+    { value: 'upi', label: 'UPI' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'bank_transfer', label: 'Bank transfer' },
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'card', label: 'Card' },
+    { value: 'other', label: 'Other' },
+  ];
+
+  /** Human label for a stored method, so the list does not print `bank_transfer`. */
+  methodLabel(method: PaymentMethod): string {
+    return this.paymentMethods.find((m) => m.value === method)?.label ?? method;
+  }
+
   private async savePayment(
     invoiceId: string,
-    values: { amount?: string; paidOn?: string; reference?: string },
+    values: {
+      amount?: string;
+      paidOn?: string;
+      reference?: string;
+      notes?: string;
+      method?: PaymentMethod;
+    },
   ): Promise<void> {
     const amount = parseCurrencyToPaise(values.amount ?? '');
     if (amount === null || amount <= 0) {
@@ -684,6 +756,8 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
         amount,
         paidOn: values.paidOn ?? todayIso(),
         reference: (values.reference ?? '').trim(),
+        notes: (values.notes ?? '').trim(),
+        method: values.method ?? 'upi',
       });
       await this.afterPaymentChange(invoiceId);
       this.toast.success(`Recorded ${formatPaise(amount)}.`);
@@ -745,6 +819,134 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   private async afterPaymentChange(invoiceId: string): Promise<void> {
     await this.refreshPayments();
     await this.store.reload(invoiceId);
+  }
+
+  // -------------------------------------------------------------------------
+  // Copying, converting and linking (§6.8)
+  // -------------------------------------------------------------------------
+
+  /** The invoice raised from this quotation, or the document this one came from. */
+  readonly relatedDocument = signal<DocumentListItem | null>(null);
+
+  readonly canConvert = computed(
+    () => this.document()?.type === 'quotation' && this.relatedDocument() === null,
+  );
+
+  private async refreshRelated(): Promise<void> {
+    const doc = this.document();
+    if (!doc) {
+      this.relatedDocument.set(null);
+      return;
+    }
+    this.relatedDocument.set(
+      doc.type === 'quotation'
+        ? await this.repository.invoiceForQuotation(doc.id)
+        : await this.repository.linkedDocument(doc.id),
+    );
+  }
+
+  /**
+   * Raise an invoice from this quotation.
+   *
+   * The quotation is left untouched — it is the record of what the client agreed to, and rewriting it
+   * once the work is billed would destroy that. The two are joined instead, and this screen then
+   * shows the link both ways.
+   */
+  async convertToInvoice(): Promise<void> {
+    const doc = this.document();
+    if (!doc) return;
+    await this.store.flush();
+
+    const alert = await this.alerts.create({
+      header: 'Raise an invoice from this?',
+      message:
+        'A new invoice is created with the same items and rates. This quotation is left exactly as ' +
+        'it is, and the two are linked.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Create invoice', handler: () => void this.applyConvert(doc.id) },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async applyConvert(id: string): Promise<void> {
+    try {
+      const invoice = await this.repository.convertQuotationToInvoice(id);
+      this.toast.success('Invoice created from this quotation.');
+      await this.router.navigate(['/document', invoice.document.id]);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  /** Copy this document as a fresh draft — the repeat-job case. */
+  async duplicateDocument(): Promise<void> {
+    const doc = this.document();
+    if (!doc) return;
+    await this.store.flush();
+    try {
+      const copy = await this.repository.duplicate(doc.id);
+      if (!copy) {
+        this.toast.error('That document could not be copied.');
+        return;
+      }
+      this.toast.success('Copied as a new draft.');
+      await this.router.navigate(['/document', copy.document.id]);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  openRelated(): void {
+    const related = this.relatedDocument();
+    if (related) void this.router.navigate(['/document', related.id]);
+  }
+
+  // -------------------------------------------------------------------------
+  // This document's own look (§10.6)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Template and accent for *this* document, overriding the profile default.
+   *
+   * §10.6: switching template changes only the CSS, so no number moves — which is what makes it safe
+   * to offer per document rather than only as a global default. A one-off job for a client with their
+   * own colours does not need the whole app reconfigured.
+   */
+  readonly templateOptions: ReadonlyArray<{ value: TemplateId; label: string }> = [
+    { value: 'classic', label: 'Classic' },
+    { value: 'bold', label: 'Bold' },
+    { value: 'compact', label: 'Compact' },
+    { value: 'minimal', label: 'Minimal' },
+  ];
+
+  readonly accentSwatches: readonly string[] = [
+    '#0F4C81',
+    '#0F6F75',
+    '#7A2F5F',
+    '#1D6B3F',
+    '#B3541E',
+    '#25292F',
+  ];
+
+  onTemplate(templateId: TemplateId): void {
+    this.store.patchDocument({ templateId });
+  }
+
+  onAccent(accentColor: string): void {
+    this.store.patchDocument({ accentColor });
+  }
+
+  currentAccent(): string {
+    return this.document()?.accentColor ?? '#0F4C81';
+  }
+
+  /** Currency the amounts are labelled with (§9.1). */
+  readonly currencyOptions: readonly string[] = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD'];
+
+  onCurrency(currency: string): void {
+    this.store.patchDocument({ currency });
   }
 
   // -------------------------------------------------------------------------

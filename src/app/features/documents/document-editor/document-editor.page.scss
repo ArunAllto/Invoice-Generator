@@ -83,3 +83,49 @@
 .cd-warn {
   color: var(--cd-warning);
 }
+
+/* Accent swatches. Real buttons rather than styled divs, so they are focusable and announce their
+   pressed state — a colour choice that only works by tap is unusable with a switch or a keyboard. */
+.cd-accent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 16px 8px;
+}
+
+.cd-accent-chip {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--cd-border);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cd-accent-chosen {
+  border-color: var(--cd-text);
+  box-shadow: 0 0 0 2px var(--cd-surface) inset;
+}
+
+/* Accent swatches. Real buttons rather than styled divs, so they are focusable and announce their
+   pressed state — a colour choice that only works by tap is unusable with a switch or a keyboard. */
+.cd-accent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 16px 8px;
+}
+
+.cd-accent-chip {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--cd-border);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cd-accent-chosen {
+  border-color: var(--cd-text);
+  box-shadow: 0 0 0 2px var(--cd-surface) inset;
+}

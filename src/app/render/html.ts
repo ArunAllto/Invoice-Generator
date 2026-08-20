@@ -28,7 +28,7 @@
 
 import type { CalcResult, TaxSummaryRow } from '../core/calc';
 import { formatIsoDate, type DateDisplayStyle } from '../core/dates';
-import { formatBasisPoints, formatMilli, formatPaise } from '../core/money';
+import { formatBasisPoints, formatMilli, formatMoneyIn, formatPaise } from '../core/money';
 import {
   A4_PAGE,
   type DocumentBlocks,
@@ -439,9 +439,16 @@ const TYPE_TITLES: Readonly<Record<DocumentType, string>> = {
   receipt: 'RECEIPT',
 };
 
+/**
+ * Every amount on the document goes through here.
+ *
+ * Delegates to `formatMoneyIn`, which knows both the symbol *and* the grouping for a currency. The
+ * version this replaced tested for `'INR'` and emitted an empty symbol for anything else, so a
+ * document billed in dollars printed bare numbers with Indian lakh grouping — wrong twice over, and
+ * invisible unless someone actually changed the currency.
+ */
 function money(amount: Paise, currency: string): string {
-  const symbol = currency === 'INR' ? '₹' : '';
-  return `${symbol}${formatPaise(amount)}`;
+  return formatMoneyIn(amount, currency);
 }
 
 // ---------------------------------------------------------------------------

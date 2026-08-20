@@ -788,6 +788,140 @@ export class DocumentsRepository {
   }
 
   // -------------------------------------------------------------------------
+  // Copying a document (§6.8)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Copy the parts of a document that describe the work rather than the transaction.
+   *
+   * Deliberately excludes the number, the status, the dates and the snapshots. A copy is a *new*
+   * document: it gets its own number when it leaves draft (§8.3), starts as a draft, and takes fresh
+   * party snapshots from `create` — because the point of copying last month's invoice is usually that
+   * the work is the same, not that the client's address was the same as it was in March.
+   */
+  private copyableFields(source: DocumentRecord): Partial<DocumentRecord> {
+    return {
+      currency: source.currency,
+      discountMode: source.discountMode,
+      discountValue: source.discountValue,
+      taxMode: source.taxMode,
+      flatTaxRateBp: source.flatTaxRateBp,
+      shippingAmount: source.shippingAmount,
+      roundOffEnabled: source.roundOffEnabled,
+      notes: source.notes,
+      terms: source.terms,
+      templateId: source.templateId,
+      accentColor: source.accentColor,
+      blocks: source.blocks,
+      customFields: source.customFields,
+    };
+  }
+
+  /** Copy the line items onto a new document, keeping their order and their price provenance. */
+  private copyLines(lines: readonly LineItem[], documentId: string): LineItem[] {
+    return lines.map((line, index) => ({
+      ...line,
+      id: uuid(),
+      documentId,
+      position: index,
+    }));
+  }
+
+  /**
+   * Duplicate a document as a fresh draft of the same type.
+   *
+   * The common case is a repeat job: same items, same rates, new month. Numbering is untouched — the
+   * copy is a draft and drafts reserve nothing (§8.3) — so duplicating ten times and abandoning nine
+   * leaves no gap in the owner's books.
+   */
+  async duplicate(id: string): Promise<FullDocument | null> {
+    const source = await this.get(id);
+    if (!source) return null;
+
+    const created = await this.create({
+      type: source.document.type,
+      clientId: source.document.clientId,
+    });
+
+    const saved = await this.save({
+      document: { ...created.document, ...this.copyableFields(source.document) },
+      lines: this.copyLines(source.lines, created.document.id),
+    });
+
+    return this.get(saved.document.id);
+  }
+
+  /**
+   * Raise an invoice from an accepted quotation (§6.8).
+   *
+   * The quotation is left exactly as it is. It is a record of what was offered and accepted, and
+   * rewriting it once the work is billed would destroy the only evidence of what the client agreed
+   * to — so the two are joined by `linked_document_id` on the invoice instead, pointing back at the
+   * quotation it came from.
+   *
+   * Refuses anything that is not a quotation rather than quietly copying it, and refuses a quotation
+   * already billed: a second invoice for one accepted quotation is a double-billing problem, not a
+   * convenience. Both are reported as an error the caller can show.
+   */
+  async convertQuotationToInvoice(id: string): Promise<FullDocument> {
+    const source = await this.get(id);
+    if (!source) throw new Error('That quotation could not be found.');
+    if (source.document.type !== 'quotation') {
+      throw new Error('Only a quotation can become an invoice.');
+    }
+
+    const existing = await this.db.first<{ id: string }>(
+      "SELECT id FROM documents WHERE type = 'invoice' AND linked_document_id = ? LIMIT 1;",
+      [id],
+    );
+    if (existing) {
+      throw new Error('This quotation has already been invoiced.');
+    }
+
+    const created = await this.create({ type: 'invoice', clientId: source.document.clientId });
+
+    const saved = await this.save({
+      document: {
+        ...created.document,
+        ...this.copyableFields(source.document),
+        // The invoice keeps its *own* terms and template defaults for the invoice type, which
+        // `create` already applied — a quotation's "50% advance to confirm" clause is about winning
+        // the job, not about collecting for it.
+        terms: created.document.terms,
+        templateId: created.document.templateId,
+        linkedDocumentId: source.document.id,
+      },
+      lines: this.copyLines(source.lines, created.document.id),
+    });
+
+    const full = await this.get(saved.document.id);
+    if (!full) throw new Error('The invoice was created but could not be reopened.');
+    return full;
+  }
+
+  /** The invoice raised from this quotation, if there is one. */
+  async invoiceForQuotation(quotationId: string): Promise<DocumentListItem | null> {
+    const row = await this.db.first<{ id: string }>(
+      "SELECT id FROM documents WHERE type = 'invoice' AND linked_document_id = ? LIMIT 1;",
+      [quotationId],
+    );
+    if (!row) return null;
+    const [item] = await this.list({ ids: [row.id] });
+    return item ?? null;
+  }
+
+  /** The document a receipt or invoice was raised from, if any. */
+  async linkedDocument(id: string): Promise<DocumentListItem | null> {
+    const row = await this.db.first<{ linked_document_id: string | null }>(
+      'SELECT linked_document_id FROM documents WHERE id = ?;',
+      [id],
+    );
+    if (!row?.linked_document_id) return null;
+    const [item] = await this.list({ ids: [row.linked_document_id] });
+    return item ?? null;
+  }
+
+  // -------------------------------------------------------------------------
   // Payments (§6.5)
   // -------------------------------------------------------------------------
 

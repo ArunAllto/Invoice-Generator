@@ -16,14 +16,26 @@ import {
 } from '@ionic/angular';
 
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
-import { THEME_OPTIONS, ThemeService, type ThemeChoice } from '../../../shared/theme/theme.service';
+import {
+  ACCENT_OPTIONS,
+  TEXT_SCALE_OPTIONS,
+  THEME_OPTIONS,
+  ThemeService,
+  type AccentChoice,
+  type TextScale,
+  type ThemeChoice,
+} from '../../../shared/theme/theme.service';
 
 /**
- * Settings → Appearance. The theme picker.
+ * Settings → Appearance.
+ *
+ * Three independent choices: theme, accent and text size. Independent because they answer different
+ * questions — dark or light is about the room, the accent is about taste, and text size is about
+ * eyesight — and folding any two together would force a compromise on someone.
  *
  * Shows a live sample and the token swatches beneath the choices, because a list of theme names
  * tells the owner nothing about what they are choosing — and the swatches read the real CSS
- * variables, so they cannot drift out of step with the stylesheet.
+ * variables, so they cannot drift from what the app actually uses.
  */
 @Component({
   selector: 'app-appearance',
@@ -51,8 +63,13 @@ export class AppearancePage {
   private readonly theme = inject(ThemeService);
 
   readonly options = THEME_OPTIONS;
+  readonly accents = ACCENT_OPTIONS;
+  readonly textScales = TEXT_SCALE_OPTIONS;
+
   readonly choice = this.theme.choice;
   readonly resolved = this.theme.resolved;
+  readonly accent = this.theme.accent;
+  readonly textScale = this.theme.textScale;
 
   readonly swatches: ReadonlyArray<{ token: string; label: string }> = [
     { token: '--cd-accent', label: 'Accent' },
@@ -68,5 +85,13 @@ export class AppearancePage {
 
   onChange(value: ThemeChoice): void {
     this.theme.set(value);
+  }
+
+  onAccent(value: AccentChoice): void {
+    this.theme.setAccent(value);
+  }
+
+  onTextScale(value: TextScale): void {
+    this.theme.setTextScale(value);
   }
 }

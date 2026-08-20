@@ -180,7 +180,7 @@ export class CataloguePage implements OnInit {
   private async save(item: CatalogueItem, values: Record<string, string>): Promise<void> {
     const name = (values['name'] ?? '').trim();
     if (name.length === 0) {
-      this.toast.show('An item needs a name.');
+      this.toast.warning('An item needs a name.');
       return;
     }
     // §16.5: the rate and the tax rate go through the shared parsers, so "1,250.50" and "18%" mean
@@ -200,7 +200,7 @@ export class CataloguePage implements OnInit {
         category: (values['category'] ?? '').trim(),
       });
       await this.reload();
-      this.toast.show('Saved.');
+      this.toast.success('Saved.');
     } catch (cause) {
       this.toast.error(cause);
     }
@@ -245,7 +245,9 @@ export class CataloguePage implements OnInit {
     try {
       const outcome = await this.masters.deleteOrArchiveCatalogueItem(item.id);
       await this.reload();
-      this.toast.show(outcome === 'archived' ? 'Archived — documents using it are untouched.' : 'Removed.');
+      this.toast.success(
+        outcome === 'archived' ? 'Archived — documents using it are untouched.' : 'Removed.',
+      );
     } catch (cause) {
       this.toast.error(cause);
     }

@@ -159,18 +159,18 @@ export class NumberingPage implements OnInit {
     const padWidth = Math.trunc(Number(values['padWidth'] ?? series.padWidth));
 
     if (!Number.isFinite(nextSeq) || nextSeq < 1) {
-      this.toast.show('The next number has to be 1 or more.');
+      this.toast.warning('The next number has to be 1 or more.');
       return;
     }
     if (!Number.isFinite(padWidth) || padWidth < 1 || padWidth > 8) {
-      this.toast.show('Use between 1 and 8 digits.');
+      this.toast.warning('Use between 1 and 8 digits.');
       return;
     }
 
     // §8.4: warn, do not block. Moving the counter backwards is legitimate when correcting a
     // mistake, and it is the owner's book to keep.
     if (nextSeq < series.nextSeq) {
-      this.toast.show(`Counter moved back to ${nextSeq}. Watch for duplicate numbers.`, 3200);
+      this.toast.warning(`Counter moved back to ${nextSeq}. Watch for duplicate numbers.`);
     }
 
     try {

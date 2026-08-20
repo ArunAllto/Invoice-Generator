@@ -74,12 +74,27 @@
     </ion-card-content>
   </ion-card>
 
-  <div class="cd-section-title">Recent</div>
+  <div class="cd-recent-head">
+    <span class="cd-section-title">Recent</span>
+    @if (summary(); as data) {
+      @if (data.recentCleared) {
+        <ion-button fill="clear" size="small" (click)="restoreRecent()">Show all</ion-button>
+      } @else if (data.recent.length > 0) {
+        <ion-button fill="clear" size="small" (click)="clearRecent()">Clear</ion-button>
+      }
+    }
+  </div>
 
   @if (summary(); as data) {
     @if (data.recent.length === 0) {
       <ion-card>
-        <ion-card-content>Nothing here yet. Create your first document above.</ion-card-content>
+        <ion-card-content>
+          @if (data.recentCleared) {
+            Cleared. Your documents are all still on the Documents tab.
+          } @else {
+            Nothing here yet. Create your first document above.
+          }
+        </ion-card-content>
       </ion-card>
     } @else {
       <ion-list inset="true">

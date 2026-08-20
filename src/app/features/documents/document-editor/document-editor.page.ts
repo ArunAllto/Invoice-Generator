@@ -13,10 +13,12 @@ import { Component, computed, inject, input, signal, type OnDestroy, type OnInit
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
+  ActionSheetController,
   AlertController,
   IonAccordion,
   IonAccordionGroup,
   IonBadge,
+  IonBackButton,
   IonButton,
   IonButtons,
   IonCheckbox,
@@ -39,7 +41,13 @@ import {
   type ViewWillLeave,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { arrowDownOutline, arrowUpOutline, closeOutline } from 'ionicons/icons';
+import {
+  arrowDownOutline,
+  arrowUpOutline,
+  closeOutline,
+  shareOutline,
+  trashOutline,
+} from 'ionicons/icons';
 
 import { isGstEnabled } from '../../../core/gst';
 import {
@@ -53,6 +61,7 @@ import {
 import { isDuplicateNumber, previewNextNumber } from '../../../core/numbering';
 import {
   allowedTransitions,
+  canHardDelete,
   deriveStatus,
   isEditable,
   statusLabel,
@@ -71,6 +80,10 @@ import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
 import { PaisePipe } from '../../../shared/pipes/paise.pipe';
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { ToastService } from '../../../shared/ui/toast.service';
+import { buildExportFilename } from '../../../export/filename';
+import { ExportService } from '../../../export/export.service';
+import { renderDocumentHtml } from '../../../render/html';
+import { toRenderInput } from '../../../render/adapt';
 import { DocumentEditorStore } from '../document-editor.store';
 
 @Component({
@@ -82,6 +95,7 @@ import { DocumentEditorStore } from '../document-editor.store';
     IonToolbar,
     IonTitle,
     IonButtons,
+    IonBackButton,
     IonButton,
     IonIcon,
     IonContent,
@@ -113,6 +127,8 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   private readonly masters = inject(MastersRepository);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly exports = inject(ExportService);
+  private readonly sheets = inject(ActionSheetController);
   private readonly alerts = inject(AlertController);
 
   /**
@@ -191,7 +207,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   });
 
   constructor() {
-    addIcons({ closeOutline, arrowUpOutline, arrowDownOutline });
+    addIcons({ closeOutline, arrowUpOutline, arrowDownOutline, shareOutline, trashOutline });
   }
 
   async ngOnInit(): Promise<void> {
@@ -264,7 +280,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   async addFromCatalogue(): Promise<void> {
     const items = await this.masters.listCatalogueItems();
     if (items.length === 0) {
-      this.toast.show('Your catalogue is empty. Add items in Settings.');
+      this.toast.warning('Your catalogue is empty. Add items in Settings.');
       return;
     }
 
@@ -348,7 +364,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
           handler: () => {
             void this.masters
               .updateCatalogueRate(catalogueItemId, rate)
-              .then(() => this.toast.show('Catalogue price updated.'));
+              .then(() => this.toast.success('Catalogue price updated.'));
           },
         },
       ],
@@ -504,7 +520,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     if (!doc) return;
     try {
       await this.masters.setSetting(SETTINGS_KEYS.defaultBlocks, JSON.stringify(doc.blocks));
-      this.toast.show('New documents will start like this.');
+      this.toast.success('New documents will start like this.');
     } catch (cause) {
       this.toast.error(cause);
     }
@@ -531,7 +547,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
 
     const clients = await this.masters.listClients();
     if (clients.length === 0) {
-      this.toast.show('No clients yet. Add one on the Clients tab.');
+      this.toast.warning('No clients yet. Add one on the Clients tab.');
       return;
     }
 
@@ -656,7 +672,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   ): Promise<void> {
     const amount = parseCurrencyToPaise(values.amount ?? '');
     if (amount === null || amount <= 0) {
-      this.toast.show('Enter an amount greater than zero.');
+      this.toast.warning('Enter an amount greater than zero.');
       return;
     }
     try {
@@ -667,7 +683,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
         reference: (values.reference ?? '').trim(),
       });
       await this.afterPaymentChange(invoiceId);
-      this.toast.show(`Recorded ${formatPaise(amount)}.`);
+      this.toast.success(`Recorded ${formatPaise(amount)}.`);
     } catch (cause) {
       this.toast.error(cause);
     }
@@ -712,7 +728,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     try {
       const receipt = await this.repository.issueReceiptForPayment(payment.id);
       if (!receipt) {
-        this.toast.show('That payment could not be turned into a receipt.');
+        this.toast.error('That payment could not be turned into a receipt.');
         return;
       }
       await this.refreshPayments();
@@ -726,6 +742,148 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   private async afterPaymentChange(invoiceId: string): Promise<void> {
     await this.refreshPayments();
     await this.store.reload(invoiceId);
+  }
+
+  // -------------------------------------------------------------------------
+  // Getting it out, and getting rid of it (§10.2, §6.7)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Build the export payload for this document.
+   *
+   * Flushes first: exporting a document with an unsaved edit still in the debounce window would
+   * hand out a file that does not match what the app shows, which is the worst possible way to
+   * discover autosave latency.
+   */
+  private async buildExport(): Promise<{ html: string; baseName: string } | null> {
+    const doc = this.document();
+    if (!doc) return null;
+    await this.store.flush();
+
+    const loaded = await this.repository.get(doc.id);
+    if (!loaded) return null;
+
+    const calc = this.repository.calculate(loaded.document, loaded.lines);
+    const input = toRenderInput(
+      { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
+      { upiQrSvg: null },
+    );
+    const filename = buildExportFilename({
+      type: loaded.document.type,
+      number: loaded.document.number,
+      clientName: loaded.document.clientSnapshot?.company || loaded.document.clientSnapshot?.name || null,
+      businessName: loaded.document.businessSnapshot.name,
+      extension: 'html',
+    });
+    return {
+      html: renderDocumentHtml(input),
+      // The service adds the extension, so it is stripped here rather than duplicated.
+      baseName: filename.replace(/\.html$/, ''),
+    };
+  }
+
+  /**
+   * The export sheet.
+   *
+   * Print is listed first because "Save as PDF" lives inside the platform print dialogue — it is
+   * the route to a PDF, not an alternative to one, and calling it "Print" while hiding that would
+   * send people looking for a PDF button that does not exist.
+   */
+  async openExport(): Promise<void> {
+    const doc = this.document();
+    if (!doc) return;
+
+    const buttons: Array<{ text: string; role?: 'cancel' | 'destructive'; handler?: () => void }> = [
+      { text: 'Print or save as PDF', handler: () => void this.exportPrint() },
+      { text: 'Save as an HTML file', handler: () => void this.exportHtml() },
+    ];
+    if (this.exports.canShareFiles || this.exports.canShareText) {
+      buttons.push({ text: 'Share…', handler: () => void this.exportShare() });
+    }
+    buttons.push({ text: 'Open the full preview', handler: () => void this.openPreview() });
+    buttons.push({ text: 'Cancel', role: 'cancel' });
+
+    const sheet = await this.sheets.create({
+      header: doc.number.trim().length > 0 ? doc.number : 'Draft',
+      subHeader: 'How would you like it?',
+      buttons,
+    });
+    await sheet.present();
+  }
+
+  private async exportPrint(): Promise<void> {
+    const payload = await this.buildExport();
+    if (!payload) return;
+    await this.exports.print(payload);
+  }
+
+  private async exportHtml(): Promise<void> {
+    const payload = await this.buildExport();
+    if (!payload) return;
+    this.exports.saveHtml(payload);
+  }
+
+  private async exportShare(): Promise<void> {
+    const payload = await this.buildExport();
+    if (!payload) return;
+    const doc = this.document();
+    const label = doc?.number.trim().length ? `${this.typeTitle()} ${doc.number}` : this.typeTitle();
+    await this.exports.share(payload, label);
+  }
+
+  /**
+   * Delete this document.
+   *
+   * §6.4 forbids hard-deleting an issued receipt — it is evidence that money changed hands — so the
+   * check is `canHardDelete`, and a receipt that cannot be deleted is offered cancellation instead.
+   * The confirmation names what will go with it, because line items and payments cascade and the
+   * owner cannot see that from here.
+   */
+  async deleteDocument(): Promise<void> {
+    const doc = this.document();
+    if (!doc) return;
+
+    if (!canHardDelete(doc.type, doc.status)) {
+      this.toast.warning('An issued receipt cannot be deleted. Cancel it instead.');
+      return;
+    }
+
+    const extras: string[] = [];
+    const lineCount = this.lines().length;
+    const paymentCount = this.paymentList().length;
+    if (lineCount > 0) extras.push(`${lineCount} line ${lineCount === 1 ? 'item' : 'items'}`);
+    if (paymentCount > 0) extras.push(`${paymentCount} recorded ${paymentCount === 1 ? 'payment' : 'payments'}`);
+
+    const alert = await this.alerts.create({
+      header: `Delete ${doc.number.trim().length > 0 ? doc.number : 'this draft'}?`,
+      message:
+        extras.length > 0
+          ? `${extras.join(' and ')} go with it. This cannot be undone.`
+          : 'This cannot be undone.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: () => {
+            void this.confirmDelete(doc.id);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async confirmDelete(id: string): Promise<void> {
+    try {
+      // Reset before deleting, so the debounced autosave cannot resurrect the row it is holding.
+      this.store.reset();
+      await this.repository.delete(id);
+      this.toast.success('Deleted.');
+      await this.router.navigateByUrl('/tabs/documents');
+    } catch (cause) {
+      this.toast.error(cause);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -746,7 +904,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await this.repository.setStatus(doc.id, status);
     await this.store.reload(doc.id);
     await this.refreshNumberPreview();
-    this.toast.show(statusLabel(status));
+    this.toast.success(statusLabel(status));
   }
 
   /** §8.4: the user may type any number; a duplicate is warned about, never blocked. */
@@ -780,7 +938,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     await this.repository.setNumberManually(id, numberText, duplicate);
     await this.store.reload(id);
     if (duplicate) {
-      this.toast.show('This number is already used by another document of this type.');
+      this.toast.warning('This number is already used by another document of this type.');
     }
   }
 

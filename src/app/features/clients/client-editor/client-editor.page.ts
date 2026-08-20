@@ -110,7 +110,7 @@ export class ClientEditorPage implements OnInit {
         // and say what happened.
         this.client.set(this.masters.emptyClient());
         this.isNew.set(true);
-        this.toast.show('That client no longer exists. Starting a new one.');
+        this.toast.warning('That client no longer exists. Starting a new one.');
       }
     }
     this.loading.set(false);
@@ -132,7 +132,7 @@ export class ClientEditorPage implements OnInit {
     this.nameTouched.set(true);
     const client = this.client();
     if (!client || this.identityMissing()) {
-      this.toast.show('Give the client a name or a company.');
+      this.toast.warning('Give the client a name or a company.');
       return;
     }
     this.saving.set(true);
@@ -144,7 +144,7 @@ export class ClientEditorPage implements OnInit {
       // if the owner backgrounds the app at the moment they hit Save, and the button stays disabled
       // for good. The write has already committed by this line, so nothing is lost by saying so now.
       this.saving.set(false);
-      this.toast.show('Saved.');
+      this.toast.success('Saved.');
       await this.router.navigateByUrl('/tabs/clients');
     } catch (cause) {
       this.saving.set(false);
@@ -178,7 +178,7 @@ export class ClientEditorPage implements OnInit {
   private async confirmRemove(id: string): Promise<void> {
     try {
       const outcome = await this.masters.deleteOrArchiveClient(id);
-      this.toast.show(
+      this.toast.success(
         outcome === 'archived' ? 'Archived — their documents are untouched.' : 'Removed.',
       );
       await this.router.navigateByUrl('/tabs/clients');

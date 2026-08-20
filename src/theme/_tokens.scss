@@ -132,3 +132,42 @@
 
   color-scheme: light;
 }
+
+/* ---------------------------------------------------------------------------
+   Accent overrides
+   ---------------------------------------------------------------------------
+
+   Each accent supplies the whole `--cd-accent*` group, and does so twice: once for a light ground
+   and once for a dark one. That duplication is the point rather than an oversight — a hue dark
+   enough to read as text on white is too dark to read *against* near-black, which is exactly the
+   mistake the dark theme's own accent already had to correct. Contrast is a property of the pair,
+   not of the colour.
+
+   The RGB triplet is repeated too, because Ionic does `rgba(var(--ion-color-primary-rgb), .2)`
+   internally and a triplet cannot be derived from a `var()` colour. */
+
+@mixin cd-accent($base, $contrast, $shade, $tint, $soft, $rgb) {
+  --cd-accent: #{$base};
+  --cd-accent-contrast: #{$contrast};
+  --cd-accent-shade: #{$shade};
+  --cd-accent-tint: #{$tint};
+  --cd-accent-soft: #{$soft};
+  --cd-text-on-accent: #{$contrast};
+  --ion-color-primary-rgb: #{$rgb};
+}
+
+/* Teal */
+@mixin cd-accent-teal-light { @include cd-accent(#0f6f75, #ffffff, #0d6167, #2a8188, #e2f2f3, (15, 111, 117)); }
+@mixin cd-accent-teal-dark  { @include cd-accent(#5cc2c9, #062325, #51aab0, #74ccd2, #122a2c, (92, 194, 201)); }
+
+/* Plum */
+@mixin cd-accent-plum-light { @include cd-accent(#7a2f5f, #ffffff, #6b2953, #8a4673, #f4e6ef, (122, 47, 95)); }
+@mixin cd-accent-plum-dark  { @include cd-accent(#d78ab8, #2a0f20, #bd79a2, #dd9bc2, #2c1725, (215, 138, 184)); }
+
+/* Forest — deliberately close to `--cd-success`, for an owner who wants the app to read as green. */
+@mixin cd-accent-forest-light { @include cd-accent(#1d6b3f, #ffffff, #195e37, #348059, #e4f2ea, (29, 107, 63)); }
+@mixin cd-accent-forest-dark  { @include cd-accent(#63c48c, #072012, #57ac7b, #79cd9d, #10261a, (99, 196, 140)); }
+
+/* Ink — the quietest option: chrome that gets out of the way entirely. */
+@mixin cd-accent-ink-light { @include cd-accent(#25292f, #ffffff, #20242a, #3b4046, #e8eaed, (37, 41, 47)); }
+@mixin cd-accent-ink-dark  { @include cd-accent(#c8ced6, #14181f, #b0b5bc, #d0d5dc, #22272e, (200, 206, 214)); }

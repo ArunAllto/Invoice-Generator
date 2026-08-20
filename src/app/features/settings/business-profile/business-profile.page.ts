@@ -108,13 +108,13 @@ export class BusinessProfilePage implements OnInit {
   async save(): Promise<void> {
     this.nameTouched.set(true);
     if (this.nameMissing()) {
-      this.toast.show('Your business needs a name.');
+      this.toast.warning('Your business needs a name.');
       return;
     }
     this.saving.set(true);
     try {
       await this.masters.saveBusinessProfile(this.profile());
-      this.toast.show('Saved.');
+      this.toast.success('Saved.');
     } catch (cause) {
       this.toast.error(cause);
     } finally {

@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, signal, type OnInit } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import {
+  ActionSheetController,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -13,10 +14,12 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { printOutline } from 'ionicons/icons';
+import { shareOutline } from 'ionicons/icons';
 
 import { buildUpiQrSvg } from '../../../core/qr';
 import { DocumentsRepository, type FullDocument } from '../../../data/repositories/documents.repository';
+import { buildExportFilename } from '../../../export/filename';
+import { ExportService } from '../../../export/export.service';
 import { countPages, renderDocumentHtml } from '../../../render/html';
 import { toRenderInput } from '../../../render/adapt';
 import { ToastService } from '../../../shared/ui/toast.service';
@@ -61,6 +64,8 @@ export class DocumentPreviewPage implements OnInit {
   private readonly repository = inject(DocumentsRepository);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
+  private readonly exports = inject(ExportService);
+  private readonly sheets = inject(ActionSheetController);
 
   /** Bound by `withComponentInputBinding` from `document/:id/preview`. */
   readonly id = input.required<string>();
@@ -89,14 +94,14 @@ export class DocumentPreviewPage implements OnInit {
   );
 
   constructor() {
-    addIcons({ printOutline });
+    addIcons({ shareOutline });
   }
 
   async ngOnInit(): Promise<void> {
     const loaded = await this.repository.get(this.id());
     if (!loaded) {
       this.loading.set(false);
-      this.toast.show('That document no longer exists.');
+      this.toast.error('That document no longer exists.');
       return;
     }
 
@@ -141,20 +146,63 @@ export class DocumentPreviewPage implements OnInit {
   }
 
   /**
-   * Hand the rendered document to the browser's print dialogue.
+   * The export sheet.
    *
-   * Printing the iframe rather than the host page is what makes this work: the host page is an Ionic
-   * app shell, and printing it would produce a screenshot of a phone UI. `contentWindow.print()`
-   * prints the document's own page, with its own page rules.
+   * Print goes first because "Save as PDF" lives *inside* the platform print dialogue — it is the
+   * route to a PDF, not an alternative to one.
    */
-  print(): void {
+  async openExport(): Promise<void> {
+    const loaded = this.loaded();
+    if (!loaded) return;
+
+    const buttons: Array<{ text: string; role?: 'cancel' | 'destructive'; handler?: () => void }> = [
+      { text: 'Print or save as PDF', handler: () => void this.print() },
+      { text: 'Save as an HTML file', handler: () => this.exports.saveHtml(this.payload()) },
+    ];
+    if (this.exports.canShareFiles || this.exports.canShareText) {
+      buttons.push({ text: 'Share…', handler: () => void this.shareDocument() });
+    }
+    buttons.push({ text: 'Cancel', role: 'cancel' });
+
+    const sheet = await this.sheets.create({
+      header: this.heading(),
+      subHeader: `${this.pageCount()} ${this.pageCount() === 1 ? 'page' : 'pages'} · A4`,
+      buttons,
+    });
+    await sheet.present();
+  }
+
+  /** The rendered document plus the name it should be saved under. */
+  private payload(): { html: string; baseName: string } {
+    const loaded = this.loaded();
+    const record = loaded?.document;
+    const filename = buildExportFilename({
+      type: record?.type ?? 'invoice',
+      number: record?.number ?? '',
+      clientName: record?.clientSnapshot?.company || record?.clientSnapshot?.name || null,
+      businessName: record?.businessSnapshot.name ?? null,
+      extension: 'html',
+    });
+    return { html: this.html(), baseName: filename.replace(/.html$/, '') };
+  }
+
+  private async shareDocument(): Promise<void> {
+    await this.exports.share(this.payload(), this.heading());
+  }
+
+  /**
+   * Print the document.
+   *
+   * Prints the iframe already on screen rather than building another: the host page is an Ionic
+   * shell, and printing *that* would produce a screenshot of a phone UI. Reusing the visible frame
+   * also makes it impossible for the printed page to differ from the one just reviewed.
+   */
+  async print(): Promise<void> {
     const frame = document.querySelector<HTMLIFrameElement>('#cd-preview-frame');
-    const view = frame?.contentWindow;
-    if (!view) {
-      this.toast.show('The preview is not ready yet.');
+    if (!frame?.contentWindow) {
+      this.toast.warning('The preview is not ready yet.');
       return;
     }
-    view.focus();
-    view.print();
+    await this.exports.print(this.payload(), frame);
   }
 }

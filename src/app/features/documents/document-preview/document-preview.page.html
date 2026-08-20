@@ -3,8 +3,8 @@
     <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/documents" /></ion-buttons>
     <ion-title>{{ heading() }}</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="print()" aria-label="Print or save as PDF">
-        <ion-icon slot="icon-only" name="print-outline" />
+      <ion-button (click)="openExport()" aria-label="Export or share this document">
+        <ion-icon slot="icon-only" name="share-outline" />
       </ion-button>
     </ion-buttons>
   </ion-toolbar>

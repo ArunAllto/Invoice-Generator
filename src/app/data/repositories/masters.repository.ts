@@ -178,6 +178,14 @@ export const SETTINGS_KEYS = {
   quotationValidityDays: 'document.quotationValidityDays',
   invoiceDueDays: 'document.invoiceDueDays',
   dateStyle: 'document.dateStyle',
+  /**
+   * When the owner last cleared the dashboard Recent list.
+   *
+   * A timestamp rather than a flag, and a *filter* rather than a deletion: Recent is derived from
+   * the documents themselves, so "clearing" it must not touch them. Documents updated after this
+   * moment reappear, which is what makes the action reversible and non-destructive.
+   */
+  recentClearedAt: 'dashboard.recentClearedAt',
 } as const;
 
 @Injectable({ providedIn: 'root' })

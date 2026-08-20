@@ -91,7 +91,7 @@ export class BackupPage {
 
       this.lastBackupName.set(name);
       const rows = Object.values(file.tables).reduce((sum, list) => sum + (list?.length ?? 0), 0);
-      this.toast.show(`${rows} rows written to ${name}.`, 3200);
+      this.toast.success(`${rows} rows written to ${name}.`);
     } catch (cause) {
       this.toast.error(cause);
     } finally {
@@ -160,7 +160,7 @@ export class BackupPage {
     this.busy.set(true);
     try {
       const summary = await this.backups.restore(backup);
-      this.toast.show(`Restored ${summary.totalRows} rows. Reopening the app…`, 3200);
+      this.toast.success(`Restored ${summary.totalRows} rows. Reopening the app…`);
       // A full reload rather than refreshing each screen: every page holds its own loaded copy of
       // the data, and there is no reliable way to tell all of them that the ground moved. Reloading
       // is what the owner would do anyway, so the app does it for them.
@@ -197,7 +197,7 @@ export class BackupPage {
     this.busy.set(true);
     try {
       await this.db.clearAllData();
-      this.toast.show('Everything deleted. Reopening the app…', 3200);
+      this.toast.success('Everything deleted. Reopening the app…');
       setTimeout(() => window.location.assign('/tabs/home'), 1200);
     } catch (cause) {
       this.toast.error(cause);

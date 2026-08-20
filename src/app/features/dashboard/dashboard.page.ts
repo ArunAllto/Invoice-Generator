@@ -11,6 +11,7 @@
 import { Component, inject, signal, type OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  AlertController,
   IonButton,
   IonCard,
   IonCardContent,
@@ -32,7 +33,9 @@ import {
   DocumentsRepository,
   type DashboardSummary,
 } from '../../data/repositories/documents.repository';
-import { MastersRepository } from '../../data/repositories/masters.repository';
+import { MastersRepository, SETTINGS_KEYS } from '../../data/repositories/masters.repository';
+import { nowIsoWithOffset } from '../../core/dates';
+import { ToastService } from '../../shared/ui/toast.service';
 import { IsoDatePipe } from '../../shared/pipes/iso-date.pipe';
 import { PaisePipe } from '../../shared/pipes/paise.pipe';
 import { StatusChipComponent } from '../../shared/ui/status-chip/status-chip.component';
@@ -70,6 +73,8 @@ const TYPE_LABELS: Record<DocumentType, string> = {
 export class DashboardPage implements OnInit, ViewWillEnter {
   private readonly documents = inject(DocumentsRepository);
   private readonly masters = inject(MastersRepository);
+  private readonly alerts = inject(AlertController);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly summary = signal<DashboardSummary | null>(null);
@@ -135,5 +140,57 @@ export class DashboardPage implements OnInit, ViewWillEnter {
 
   openProfile(): void {
     void this.router.navigate(['/settings/business']);
+  }
+
+  // -------------------------------------------------------------------------
+  // Clearing the Recent list (§4.1)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Hide everything currently in Recent.
+   *
+   * Recent is derived from the documents themselves, so this cannot delete anything — it records
+   * "cleared at this moment" and the list then shows only what was touched afterwards. That makes
+   * it reversible, and it means the outstanding totals above are untouched: hiding a row from a
+   * list must never change what a client owes.
+   *
+   * The confirmation says so explicitly, because "Clear" next to a list of invoices is exactly the
+   * kind of button people are right to be wary of.
+   */
+  async clearRecent(): Promise<void> {
+    const alert = await this.alerts.create({
+      header: 'Clear the Recent list?',
+      message:
+        'This only hides them here. No document is deleted, nothing changes on the Documents tab, ' +
+        'and the amounts above stay the same.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Clear', handler: () => void this.applyClearRecent() },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async applyClearRecent(): Promise<void> {
+    try {
+      await this.masters.setSetting(SETTINGS_KEYS.recentClearedAt, nowIsoWithOffset());
+      await this.reload();
+      this.toast.success('Recent cleared. Nothing was deleted.');
+    } catch (cause) {
+      this.toast.error(cause);
+    }
+  }
+
+  /** Drop the marker, so everything shows again. */
+  async restoreRecent(): Promise<void> {
+    try {
+      // Blank rather than a deleted row: every reader treats an empty setting as absent, which is
+      // one fewer state than "missing vs empty vs set".
+      await this.masters.setSetting(SETTINGS_KEYS.recentClearedAt, '');
+      await this.reload();
+      this.toast.info('Showing everything again.');
+    } catch (cause) {
+      this.toast.error(cause);
+    }
   }
 }

@@ -136,13 +136,12 @@ export class BrandingPage implements OnInit {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      this.toast.show('Choose an image file.');
+      this.toast.warning('Choose an image file.');
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      this.toast.show(
+      this.toast.warning(
         `That image is ${Math.round(file.size / 1024)} KB. Keep it under ${MAX_IMAGE_BYTES / 1024} KB — every document carries its own copy.`,
-        4000,
       );
       return;
     }
@@ -150,7 +149,7 @@ export class BrandingPage implements OnInit {
     try {
       const dataUri = await this.readAsDataUri(file);
       await this.persist(kind, dataUri);
-      this.toast.show(kind === 'logo' ? 'Logo updated.' : 'Signature updated.');
+      this.toast.success(kind === 'logo' ? 'Logo updated.' : 'Signature updated.');
     } catch (cause) {
       this.toast.error(cause);
     }
@@ -209,7 +208,7 @@ export class BrandingPage implements OnInit {
       const next: BusinessProfile = { ...current, defaultTemplateId: value };
       await this.masters.saveBusinessProfile(next);
       this.profile.set(next);
-      this.toast.show('New documents will use this template.');
+      this.toast.success('New documents will use this template.');
     } catch (cause) {
       this.toast.error(cause);
     }

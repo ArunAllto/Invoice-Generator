@@ -29,6 +29,46 @@
     }
   </ion-note>
 
+  <ion-list inset="true">
+    <ion-list-header>Accent colour</ion-list-header>
+    <ion-radio-group [value]="accent()" (ionChange)="onAccent($any($event.detail).value)">
+      @for (option of accents; track option.value) {
+        <ion-item>
+          <ion-radio [value]="option.value" labelPlacement="end" justify="start">
+            <ion-label class="ion-text-wrap">
+              <h3>{{ option.label }}</h3>
+              <p>{{ option.description }}</p>
+            </ion-label>
+          </ion-radio>
+        </ion-item>
+      }
+    </ion-radio-group>
+  </ion-list>
+
+  <!-- Worth stating plainly: the accent is the app's chrome, and a document's own accent is set per
+       document in the editor. Someone changing this expects to know which one moved. -->
+  <ion-note class="cd-note">
+    This colours the app. Each document keeps its own accent, set on the document itself.
+  </ion-note>
+
+  <ion-list inset="true">
+    <ion-list-header>Text size</ion-list-header>
+    <ion-radio-group [value]="textScale()" (ionChange)="onTextScale($any($event.detail).value)">
+      @for (option of textScales; track option.value) {
+        <ion-item>
+          <ion-radio [value]="option.value" labelPlacement="end" justify="start">
+            <ion-label>{{ option.label }}</ion-label>
+          </ion-radio>
+        </ion-item>
+      }
+    </ion-radio-group>
+  </ion-list>
+
+  <ion-note class="cd-note">
+    §11: rows grow with the text rather than clipping it, so a larger size costs you scrolling and
+    nothing else. Printed documents are unaffected.
+  </ion-note>
+
   <!-- A live sample, so the effect of a choice is visible without hunting for a screen that
        happens to use every colour. -->
   <ion-list inset="true">

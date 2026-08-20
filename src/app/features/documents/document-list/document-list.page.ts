@@ -13,13 +13,19 @@
 import { Component, inject, signal, type OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  ActionSheetController,
+  AlertController,
   IonBadge,
   IonButtons,
   IonChip,
+  IonIcon,
   IonContent,
   IonHeader,
   IonItem,
   IonLabel,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
   IonList,
   IonNote,
   IonSearchbar,
@@ -31,11 +37,20 @@ import {
   type ViewWillEnter,
 } from '@ionic/angular';
 
+import { addIcons } from 'ionicons';
+import { shareOutline, trashOutline } from 'ionicons/icons';
+
+import { canHardDelete } from '../../../core/status';
 import type { DocumentStatus, DocumentType } from '../../../core/types';
 import {
   DocumentsRepository,
   type DocumentListItem,
 } from '../../../data/repositories/documents.repository';
+import { ExportService } from '../../../export/export.service';
+import { buildExportFilename } from '../../../export/filename';
+import { toRenderInput } from '../../../render/adapt';
+import { renderDocumentHtml } from '../../../render/html';
+import { ToastService } from '../../../shared/ui/toast.service';
 import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
 import { PaisePipe } from '../../../shared/pipes/paise.pipe';
 import { StatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
@@ -67,6 +82,10 @@ const TYPE_LABELS: Record<DocumentType, string> = {
     IonNote,
     IonChip,
     IonBadge,
+    IonIcon,
+    IonItemSliding,
+    IonItemOptions,
+    IonItemOption,
     IonSpinner,
     PaisePipe,
     IsoDatePipe,
@@ -78,6 +97,10 @@ const TYPE_LABELS: Record<DocumentType, string> = {
 export class DocumentListPage implements OnInit, ViewWillEnter {
   private readonly documents = inject(DocumentsRepository);
   private readonly router = inject(Router);
+  private readonly exports = inject(ExportService);
+  private readonly sheets = inject(ActionSheetController);
+  private readonly alerts = inject(AlertController);
+  private readonly toast = inject(ToastService);
 
   readonly items = signal<DocumentListItem[]>([]);
   readonly loading = signal(true);
@@ -104,6 +127,10 @@ export class DocumentListPage implements OnInit, ViewWillEnter {
    * First load. Angular's own hook is the reliable one — Ionic's `ionViewWillEnter` does not
    * fire for the initially-activated tab route, which left this page on a spinner for ever.
    */
+  constructor() {
+    addIcons({ shareOutline, trashOutline });
+  }
+
   async ngOnInit(): Promise<void> {
     await this.reload();
   }
@@ -157,5 +184,107 @@ export class DocumentListPage implements OnInit, ViewWillEnter {
 
   open(id: string): void {
     void this.router.navigate(['/document', id]);
+  }
+
+  // -------------------------------------------------------------------------
+  // Row actions (§6.7, §10.2)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Export straight from the list.
+   *
+   * Reached by swiping the row, so the common case — open, check, send — is untouched, but a
+   * document the owner already knows is right can be sent without opening it at all.
+   */
+  async exportItem(item: DocumentListItem): Promise<void> {
+    const payload = await this.buildExport(item.id);
+    if (!payload) return;
+
+    const buttons: Array<{ text: string; role?: 'cancel' | 'destructive'; handler?: () => void }> = [
+      { text: 'Print or save as PDF', handler: () => void this.exports.print(payload) },
+      { text: 'Save as an HTML file', handler: () => this.exports.saveHtml(payload) },
+    ];
+    if (this.exports.canShareFiles || this.exports.canShareText) {
+      buttons.push({
+        text: 'Share…',
+        handler: () => void this.exports.share(payload, item.number || 'Document'),
+      });
+    }
+    buttons.push({ text: 'Cancel', role: 'cancel' });
+
+    const sheet = await this.sheets.create({
+      header: item.number || '(draft)',
+      buttons,
+    });
+    await sheet.present();
+  }
+
+  private async buildExport(id: string): Promise<{ html: string; baseName: string } | null> {
+    const loaded = await this.documents.get(id);
+    if (!loaded) {
+      this.toast.error('That document could not be loaded.');
+      return null;
+    }
+    const calc = this.documents.calculate(loaded.document, loaded.lines);
+    const html = renderDocumentHtml(
+      toRenderInput({
+        document: loaded.document,
+        lines: loaded.lines,
+        calc,
+        derived: loaded.derived,
+      }),
+    );
+    const filename = buildExportFilename({
+      type: loaded.document.type,
+      number: loaded.document.number,
+      clientName:
+        loaded.document.clientSnapshot?.company || loaded.document.clientSnapshot?.name || null,
+      businessName: loaded.document.businessSnapshot.name,
+      extension: 'html',
+    });
+    return { html, baseName: filename.replace(/\.html$/, '') };
+  }
+
+  /**
+   * Delete a document from the list.
+   *
+   * §6.4 forbids hard-deleting an issued receipt, so that case is refused with the alternative
+   * rather than a bare "no". The confirmation names the line items and payments that cascade,
+   * because the row does not show them.
+   */
+  async deleteItem(item: DocumentListItem): Promise<void> {
+    if (!canHardDelete(item.type, item.status)) {
+      this.toast.warning('An issued receipt cannot be deleted. Open it and cancel it instead.');
+      return;
+    }
+
+    const alert = await this.alerts.create({
+      header: `Delete ${item.number || 'this draft'}?`,
+      message:
+        item.type === 'invoice' && item.balance > 0
+          ? 'Its line items and any recorded payments go with it. This cannot be undone.'
+          : 'Its line items go with it. This cannot be undone.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: () => {
+            void this.confirmDelete(item);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async confirmDelete(item: DocumentListItem): Promise<void> {
+    try {
+      await this.documents.delete(item.id);
+      await this.reload();
+      this.toast.success(`${item.number || 'Draft'} deleted.`);
+    } catch (cause) {
+      this.toast.error(cause);
+    }
   }
 }

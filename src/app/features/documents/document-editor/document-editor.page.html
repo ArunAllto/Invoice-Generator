@@ -1,13 +1,21 @@
 <ion-header>
   <ion-toolbar color="primary">
+    <!-- This is a full-screen route reached from a tab, so it needs its own way back: there is no
+         tab bar underneath it to escape through. -->
     <ion-buttons slot="start">
-      <ion-button (click)="openPreview()">Preview</ion-button>
+      <ion-back-button defaultHref="/tabs/documents" />
     </ion-buttons>
     <ion-title>{{ typeTitle() }}</ion-title>
     <ion-buttons slot="end">
       @if (derived(); as status) {
         <cd-status-chip [status]="status.status" />
       }
+      <ion-button (click)="openExport()" aria-label="Export or share this document">
+        <ion-icon slot="icon-only" name="share-outline" />
+      </ion-button>
+      <ion-button (click)="deleteDocument()" aria-label="Delete this document">
+        <ion-icon slot="icon-only" name="trash-outline" />
+      </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>

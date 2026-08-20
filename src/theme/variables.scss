@@ -109,3 +109,37 @@
   --ion-background-color-rgb: 255, 255, 255;
   --ion-text-color-rgb: 0, 0, 0;
 }
+
+/* ---------------------------------------------------------------------------
+   Accent overrides (`data-accent` on <html>, written by ThemeService)
+   ---------------------------------------------------------------------------
+
+   Each accent needs a light-ground and a dark-ground variant, so the selectors have to know which
+   theme is in force. `navy` is absent on purpose: it writes no attribute, so the theme's own accent
+   stands and there is nothing to undo.
+
+   The dark variant is claimed by three selectors — explicit `dark`, and the OS preference when the
+   user has chosen neither light nor high-contrast explicitly. Same guard as the theme blocks above,
+   for the same reason: an explicit theme choice must beat the OS in both directions. */
+
+/* Light-ground accents. */
+:root[data-accent='teal'] { @include tokens.cd-accent-teal-light; }
+:root[data-accent='plum'] { @include tokens.cd-accent-plum-light; }
+:root[data-accent='forest'] { @include tokens.cd-accent-forest-light; }
+:root[data-accent='ink'] { @include tokens.cd-accent-ink-light; }
+
+/* Dark ground, chosen explicitly. Declared after the light block so it wins on equal specificity. */
+:root[data-theme='dark'][data-accent='teal'] { @include tokens.cd-accent-teal-dark; }
+:root[data-theme='dark'][data-accent='plum'] { @include tokens.cd-accent-plum-dark; }
+:root[data-theme='dark'][data-accent='forest'] { @include tokens.cd-accent-forest-dark; }
+:root[data-theme='dark'][data-accent='ink'] { @include tokens.cd-accent-ink-dark; }
+
+/* Dark ground, from the OS, only when no explicit theme overrides it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='high-contrast']):not([data-theme='dark']) {
+    &[data-accent='teal'] { @include tokens.cd-accent-teal-dark; }
+    &[data-accent='plum'] { @include tokens.cd-accent-plum-dark; }
+    &[data-accent='forest'] { @include tokens.cd-accent-forest-dark; }
+    &[data-accent='ink'] { @include tokens.cd-accent-ink-dark; }
+  }
+}

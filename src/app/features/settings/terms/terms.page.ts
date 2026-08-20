@@ -137,7 +137,7 @@ export class TermsPage implements OnInit {
     const title = (values['title'] ?? '').trim();
     const body = (values['body'] ?? '').trim();
     if (body.length === 0) {
-      this.toast.show('Empty terms would print an empty heading. Add some text.');
+      this.toast.warning('Empty terms would print an empty heading. Add some text.');
       return;
     }
     try {
@@ -147,7 +147,7 @@ export class TermsPage implements OnInit {
         body,
       });
       await this.reload();
-      this.toast.show('Saved.');
+      this.toast.success('Saved.');
     } catch (cause) {
       this.toast.error(cause);
     }
@@ -196,7 +196,7 @@ export class TermsPage implements OnInit {
     try {
       await this.masters.saveTermsBlock({ ...block, isDefault: true });
       await this.reload();
-      this.toast.show('New documents will start with these terms.');
+      this.toast.success('New documents will start with these terms.');
     } catch (cause) {
       this.toast.error(cause);
     }

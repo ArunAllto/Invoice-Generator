@@ -39,3 +39,12 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* The Recent heading carries its own action, so it is a row rather than a bare label. The label
+   keeps its shared .cd-section-title styling; only the layout lives here. */
+.cd-recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+}

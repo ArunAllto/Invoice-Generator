@@ -184,7 +184,7 @@ export class CustomFieldsPage implements OnInit {
 
   private async save(def: CustomFieldDef, label: string): Promise<void> {
     if (label.length === 0) {
-      this.toast.show('A field needs a name.');
+      this.toast.warning('A field needs a name.');
       return;
     }
     try {

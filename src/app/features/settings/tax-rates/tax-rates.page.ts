@@ -120,7 +120,7 @@ export class TaxRatesPage implements OnInit {
   private async save(preset: TaxPreset, values: Record<string, string>): Promise<void> {
     const rateBp = parsePercentToBasisPoints(values['rate'] ?? '');
     if (rateBp === null) {
-      this.toast.show('That rate could not be read as a percentage.');
+      this.toast.warning('That rate could not be read as a percentage.');
       return;
     }
     // A label is optional: the rate itself is a perfectly good name for a rate, and demanding
@@ -129,7 +129,7 @@ export class TaxRatesPage implements OnInit {
     try {
       await this.masters.saveTaxPreset({ ...preset, label, rateBp });
       await this.reload();
-      this.toast.show('Saved.');
+      this.toast.success('Saved.');
     } catch (cause) {
       this.toast.error(cause);
     }

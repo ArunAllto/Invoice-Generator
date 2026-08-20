@@ -47,6 +47,9 @@
   } @else {
     <ion-list inset="true">
       @for (item of items(); track item.id) {
+        <!-- Swipe for the two actions that do not need the document opened. Delete sits on the far
+             side so a half-swipe cannot reach it. -->
+        <ion-item-sliding>
         <ion-item button="true" (click)="open(item.id)">
           <ion-label>
             <h3>{{ typeLabels[item.type] }} {{ item.number || '(draft)' }}</h3>
@@ -66,6 +69,15 @@
             </div>
           </div>
         </ion-item>
+        <ion-item-options side="end">
+          <ion-item-option (click)="exportItem(item)">
+            <ion-icon slot="icon-only" name="share-outline" />
+          </ion-item-option>
+          <ion-item-option color="danger" (click)="deleteItem(item)">
+            <ion-icon slot="icon-only" name="trash-outline" />
+          </ion-item-option>
+        </ion-item-options>
+        </ion-item-sliding>
       }
     </ion-list>
   }

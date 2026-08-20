@@ -54,7 +54,7 @@ import {
   type PaymentRow,
 } from '../rows';
 import { SqliteService } from '../sqlite.service';
-import { MastersRepository, type NumberingSeries } from './masters.repository';
+import { MastersRepository, SETTINGS_KEYS, type NumberingSeries } from './masters.repository';
 
 // ---------------------------------------------------------------------------
 // App-level shapes
@@ -196,6 +196,8 @@ export interface DashboardSummary {
   invoicesUnpaid: number;
   totalOutstanding: Paise;
   recent: DocumentListItem[];
+  /** True when a clear marker is in force, so the UI can offer to undo it. */
+  recentCleared: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -628,7 +630,15 @@ export class DocumentsRepository {
       }
     }
 
-    return { quotationsPending, invoicesUnpaid, totalOutstanding, recent: all.slice(0, 5) };
+    // The counts above deliberately ignore the clear marker: hiding a row from Recent must not
+    // change what the owner is owed. Only the list itself is filtered.
+    const clearedAt = (await this.masters.getSetting(SETTINGS_KEYS.recentClearedAt)) ?? '';
+    const recent = (clearedAt.trim().length > 0
+      ? all.filter((item) => item.updatedAt > clearedAt)
+      : all
+    ).slice(0, 5);
+
+    return { quotationsPending, invoicesUnpaid, totalOutstanding, recent, recentCleared: clearedAt.trim().length > 0 };
   }
 
   // -------------------------------------------------------------------------

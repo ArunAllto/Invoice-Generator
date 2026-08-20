@@ -37,7 +37,14 @@ export function sanitiseFilenamePart(value: string): string {
     .replace(/[-.\s]+$/, '');
 }
 
-export type ExportExtension = 'pdf' | 'docx' | 'png' | 'jpg';
+/**
+ * Extensions an export can carry.
+ *
+ * `html` is the self-contained single-file export of §10.1 — the one format the app can produce
+ * without a third-party library, since `render/html.ts` already inlines the stylesheet and every
+ * image as a `data:` URI.
+ */
+export type ExportExtension = 'pdf' | 'docx' | 'png' | 'jpg' | 'html';
 
 export interface FilenameParts {
   type: DocumentType;
@@ -74,6 +81,7 @@ export function buildExportFilename(parts: FilenameParts): string {
 
 export const MIME_TYPES: Readonly<Record<ExportExtension, string>> = {
   pdf: 'application/pdf',
+  html: 'text/html',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   png: 'image/png',
   jpg: 'image/jpeg',

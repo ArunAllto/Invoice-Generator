@@ -146,7 +146,7 @@ export class DefaultsPage implements OnInit {
       );
       await this.masters.setSetting(SETTINGS_KEYS.invoiceDueDays, String(this.invoiceDueDays()));
       await this.masters.setSetting(SETTINGS_KEYS.dateStyle, this.dateStyle());
-      this.toast.show('Saved. New documents will use these.');
+      this.toast.success('Saved. New documents will use these.');
     } catch (cause) {
       this.toast.error(cause);
     } finally {

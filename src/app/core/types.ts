@@ -96,3 +96,59 @@ export const DEFAULT_BLOCKS: DocumentBlocks = {
   descriptions: true,
   taxSummary: true,
 };
+
+/**
+ * Named paper sizes the document can be laid out on.
+ *
+ * `custom` means the width and height come from the owner's own numbers instead of this table.
+ * Kept as a union rather than free-form millimetres everywhere so the common case — "A4, like
+ * everyone else in India" — stays one word in the settings row and one word in a backup.
+ */
+export type PageSizeId = 'a4' | 'letter' | 'legal' | 'a5' | 'custom';
+
+/**
+ * The paper a document is laid out on (§10.1).
+ *
+ * Millimetres throughout, including for the US sizes, because the renderer works in millimetres and
+ * converting once here beats carrying two units through pagination. Letter is 215.9 × 279.4mm and
+ * Legal 215.9 × 355.6mm — the exact conversions of 8.5×11in and 8.5×14in, not rounded, since a
+ * rounded page height compounds into a wrong row count on a long invoice.
+ */
+export interface PageGeometry {
+  sizeId: PageSizeId;
+  widthMm: number;
+  heightMm: number;
+  /** Left and right margin. */
+  marginXMm: number;
+  /** Top and bottom margin. */
+  marginYMm: number;
+}
+
+/** §10.1's A4 with 20mm sides and 16mm top and bottom. The default everywhere. */
+export const A4_PAGE: PageGeometry = {
+  sizeId: 'a4',
+  widthMm: 210,
+  heightMm: 297,
+  marginXMm: 20,
+  marginYMm: 16,
+};
+
+export const PAGE_PRESETS: Readonly<Record<Exclude<PageSizeId, 'custom'>, PageGeometry>> = {
+  a4: A4_PAGE,
+  letter: { sizeId: 'letter', widthMm: 215.9, heightMm: 279.4, marginXMm: 20, marginYMm: 16 },
+  legal: { sizeId: 'legal', widthMm: 215.9, heightMm: 355.6, marginXMm: 20, marginYMm: 16 },
+  // A5 gets tighter margins: 20mm sides on a 148mm sheet would leave 108mm of usable width, which
+  // is not enough for the items table to stay readable.
+  a5: { sizeId: 'a5', widthMm: 148, heightMm: 210, marginXMm: 12, marginYMm: 10 },
+};
+
+/** Bounds for a custom page, wide enough for a receipt roll and an A3 sheet. */
+export const PAGE_LIMITS = {
+  minWidthMm: 70,
+  maxWidthMm: 420,
+  minHeightMm: 100,
+  maxHeightMm: 600,
+  minMarginMm: 0,
+  /** A margin may not eat the page: capped so at least 50mm of content width survives. */
+  maxMarginMm: 40,
+} as const;

@@ -1,0 +1,126 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start"><ion-back-button defaultHref="/tabs/more" /></ion-buttons>
+    <ion-title>Document size</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    <!-- Said up front, because "changing the paper size" sounds like it might change the money. -->
+    <ion-note class="cd-note">
+      This is the paper your documents are laid out on. No amount on a document changes — only how
+      many pages it takes. Documents already issued reprint at the new size too.
+    </ion-note>
+
+    <ion-list inset="true">
+      <ion-list-header>Paper</ion-list-header>
+      <ion-radio-group [value]="draft().sizeId" (ionChange)="onSize($any($event.detail).value)">
+        @for (size of sizes; track size.value) {
+          <ion-item>
+            <ion-radio [value]="size.value" labelPlacement="end" justify="start">
+              <ion-label class="ion-text-wrap">
+                <h3>{{ size.label }}</h3>
+                <p>{{ size.hint }}</p>
+              </ion-label>
+            </ion-radio>
+          </ion-item>
+        }
+      </ion-radio-group>
+    </ion-list>
+
+    @if (isCustom()) {
+      <ion-list inset="true">
+        <ion-list-header>Size in millimetres</ion-list-header>
+        <ion-item>
+          <ion-input
+            label="Width"
+            labelPlacement="stacked"
+            type="number"
+            inputmode="decimal"
+            [min]="limits.minWidthMm"
+            [max]="limits.maxWidthMm"
+            [value]="draft().widthMm"
+            (ionInput)="patchNumber('widthMm', $any($event.target).value)"
+          />
+        </ion-item>
+        <ion-item>
+          <ion-input
+            label="Height"
+            labelPlacement="stacked"
+            type="number"
+            inputmode="decimal"
+            [min]="limits.minHeightMm"
+            [max]="limits.maxHeightMm"
+            [value]="draft().heightMm"
+            (ionInput)="patchNumber('heightMm', $any($event.target).value)"
+          />
+        </ion-item>
+      </ion-list>
+      <ion-note class="cd-note">
+        Between {{ limits.minWidthMm }} and {{ limits.maxWidthMm }} mm wide, and
+        {{ limits.minHeightMm }} to {{ limits.maxHeightMm }} mm tall — wide enough for a receipt roll,
+        tall enough for A3.
+      </ion-note>
+    }
+
+    <ion-list inset="true">
+      <ion-list-header>Margins in millimetres</ion-list-header>
+      <ion-item>
+        <ion-input
+          label="Left and right"
+          labelPlacement="stacked"
+          type="number"
+          inputmode="decimal"
+          [min]="limits.minMarginMm"
+          [max]="limits.maxMarginMm"
+          [value]="draft().marginXMm"
+          (ionInput)="patchNumber('marginXMm', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="Top and bottom"
+          labelPlacement="stacked"
+          type="number"
+          inputmode="decimal"
+          [min]="limits.minMarginMm"
+          [max]="limits.maxMarginMm"
+          [value]="draft().marginYMm"
+          (ionInput)="patchNumber('marginYMm', $any($event.target).value)"
+        />
+      </ion-item>
+    </ion-list>
+    <ion-note class="cd-note">
+      Margins can be set on any paper size — narrow sides on A4 does not make it a custom size.
+    </ion-note>
+
+    <ion-list inset="true">
+      <ion-list-header>Result</ion-list-header>
+      <ion-item lines="none">
+        <ion-label class="ion-text-wrap">
+          <h3>{{ summary() }}</h3>
+          <p>{{ contentSize() }}</p>
+        </ion-label>
+      </ion-item>
+    </ion-list>
+
+    <!-- Shown rather than silently corrected: a field that quietly rewrites your number leaves you
+         unsure whether it took the value at all. -->
+    @if (wasClamped()) {
+      <ion-note color="warning" class="cd-note">
+        Adjusted to fit — margins may not leave the page too narrow for the items table to be
+        readable.
+      </ion-note>
+    }
+
+    <div class="cd-actions">
+      <ion-button expand="block" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Saving…' : 'Save' }}
+      </ion-button>
+      <ion-button expand="block" fill="clear" (click)="resetToA4()">Back to A4</ion-button>
+    </div>
+  }
+</ion-content>

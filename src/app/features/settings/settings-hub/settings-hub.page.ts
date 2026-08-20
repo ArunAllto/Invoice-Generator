@@ -86,6 +86,12 @@ export class SettingsHubPage {
           built: true,
         },
         {
+          title: 'Document size',
+          subtitle: 'Paper size and margins for every document',
+          route: '/settings/page-size',
+          built: true,
+        },
+        {
           title: 'Item catalogue',
           subtitle: 'Items and services with saved prices',
           route: '/settings/catalogue',

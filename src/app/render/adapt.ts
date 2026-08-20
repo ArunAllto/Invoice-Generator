@@ -21,6 +21,8 @@
  */
 
 import type { CalcResult } from '../core/calc';
+import type { DateDisplayStyle } from '../core/dates';
+import type { PageGeometry } from '../core/types';
 import type { DerivedStatus } from '../core/status';
 import type { DocumentRecord, LineItem, PartySnapshot } from '../data/repositories/documents.repository';
 import type { RenderInput, RenderLine, RenderOptions, RenderParty } from './html';
@@ -93,6 +95,14 @@ export function watermarkFor(status: string): string | null {
 }
 
 export interface AdaptOptions {
+  /**
+   * The paper to lay out on, and how dates read (§10.1).
+   *
+   * These come from settings rather than from the document, and are loaded by
+   * `RenderSettingsService` so every caller gets the same answer.
+   */
+  page?: PageGeometry | undefined;
+  dateStyle?: DateDisplayStyle | undefined;
   /** Screen preview rather than export: drops print-only page shadows and centring. */
   forScreen?: boolean;
   /** Render only this page (1-based), still numbered against the whole document. */
@@ -118,6 +128,16 @@ export function toRenderInput(
 ): RenderInput {
   const { document: record, lines, calc, derived } = input;
 
+  /**
+   * Built field by field rather than spread.
+   *
+   * That is deliberate — `exactOptionalPropertyTypes` means an explicit `undefined` is not the same
+   * as an absent key, and the renderer distinguishes them. But it is also a trap: a field added to
+   * `RenderOptions` and not added *here* is silently dropped, with no type error, and the document
+   * renders with the default. That is exactly how the page size and date style were lost on their
+   * first wiring — the settings loaded correctly and this function threw them away. Anything new on
+   * `RenderOptions` has to be added below.
+   */
   const renderOptions: RenderOptions = {
     fontCss: options.fontCss ?? '',
     fontFamily: options.fontFamily ?? PREVIEW_FONT_FAMILY,
@@ -127,6 +147,8 @@ export function toRenderInput(
     forScreen: options.forScreen ?? false,
     ...(options.onlyPage === undefined ? {} : { onlyPage: options.onlyPage }),
     ...(options.pixelWidth === undefined ? {} : { pixelWidth: options.pixelWidth }),
+    ...(options.page === undefined ? {} : { page: options.page }),
+    ...(options.dateStyle === undefined ? {} : { dateStyle: options.dateStyle }),
   };
 
   return {

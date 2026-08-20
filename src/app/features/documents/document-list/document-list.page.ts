@@ -50,6 +50,7 @@ import { ExportService } from '../../../export/export.service';
 import { buildExportFilename } from '../../../export/filename';
 import { toRenderInput } from '../../../render/adapt';
 import { buildDocumentUpiQr } from '../../../render/upi-qr';
+import { RenderSettingsService } from '../../../render/render-settings.service';
 import { renderDocumentHtml } from '../../../render/html';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
@@ -102,6 +103,7 @@ export class DocumentListPage implements OnInit, ViewWillEnter {
   private readonly sheets = inject(ActionSheetController);
   private readonly alerts = inject(AlertController);
   private readonly toast = inject(ToastService);
+  private readonly renderSettings = inject(RenderSettingsService);
 
   readonly items = signal<DocumentListItem[]>([]);
   readonly loading = signal(true);
@@ -231,6 +233,7 @@ export class DocumentListPage implements OnInit, ViewWillEnter {
       toRenderInput(
         { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
         {
+          ...(await this.renderSettings.load()),
           upiQrSvg: buildDocumentUpiQr({
             document: loaded.document,
             balance: loaded.derived.balance,

@@ -1,7 +1,13 @@
 import { calculateDocument } from '../core/calc';
 import { amountInWords } from '../core/number-to-words-indian';
 import { buildUpiUri, encodeQr, qrToSvg } from '../core/qr';
-import { DEFAULT_BLOCKS, type DocumentBlocks, type TemplateId } from '../core/types';
+import { resolvePageGeometry } from '../core/page-size';
+import {
+  DEFAULT_BLOCKS,
+  PAGE_PRESETS,
+  type DocumentBlocks,
+  type TemplateId,
+} from '../core/types';
 import {
   countPages,
   escapeHtml,
@@ -589,5 +595,121 @@ describe('renderDocumentHtml — determinism', () => {
     expect(html).toContain('Received from');
     expect(html).toContain('UPI');
     expect(html).toContain('UTR123456');
+  });
+});
+
+/**
+ * Configurable paper (§10.1).
+ *
+ * The point of these is that the row count per page is *derived* from the sheet. A change that
+ * altered the CSS but left pagination on A4's 265mm of usable height would look right in the preview
+ * and then overflow when printed, which is exactly the failure explicit pagination exists to avoid.
+ */
+describe('renderDocumentHtml — page size', () => {
+  const twentyLines = Array.from({ length: 20 }, (_, i) => line({ name: `Item ${i + 1}` }));
+
+  it('defaults to A4 when no page is given', () => {
+    const html = renderDocumentHtml(build());
+    expect(html).toContain('@page { size: A4;');
+    expect(html).toContain('margin: 16mm 20mm;');
+  });
+
+  it('emits each preset as a named CSS size', () => {
+    expect(renderDocumentHtml(build({ options: { page: PAGE_PRESETS.letter } }))).toContain(
+      '@page { size: letter;',
+    );
+    expect(renderDocumentHtml(build({ options: { page: PAGE_PRESETS.a5 } }))).toContain(
+      '@page { size: A5;',
+    );
+    expect(renderDocumentHtml(build({ options: { page: PAGE_PRESETS.legal } }))).toContain(
+      '@page { size: legal;',
+    );
+  });
+
+  /**
+   * How many item rows the renderer actually placed on a given page.
+   *
+   * Needs a document long enough to overflow every sheet under test — with only twenty rows both
+   * Letter and Legal hold the lot on page one, and the comparison proves nothing.
+   */
+  const longDocument = Array.from({ length: 60 }, (_, i) => line({ name: `Row ${i + 1}` }));
+
+  const rowsOnPage = (page: number, geometry?: RenderInput['options']['page']): number => {
+    const html = renderDocumentHtml(
+      build({
+        lines: longDocument,
+        options: { onlyPage: page, ...(geometry ? { page: geometry } : {}) },
+      }),
+    );
+    return longDocument.filter((l) => html.includes(`>${l.name}<`)).length;
+  };
+
+  it('fits fewer rows per page on a smaller sheet', () => {
+    // The precise claim, rather than a page total: a page count can coincide across two sheets while
+    // the rows are distributed quite differently, so counting pages proves nothing on its own.
+    expect(rowsOnPage(1, PAGE_PRESETS.a5)).toBeLessThan(rowsOnPage(1));
+  });
+
+  it('fits more rows per page on a taller sheet', () => {
+    expect(rowsOnPage(1, PAGE_PRESETS.legal)).toBeGreaterThan(rowsOnPage(1, PAGE_PRESETS.letter));
+  });
+
+  it('needs more pages for the same document on a smaller sheet', () => {
+    const onA4 = countPages(build({ lines: longDocument }));
+    const onA5 = countPages(build({ lines: longDocument, options: { page: PAGE_PRESETS.a5 } }));
+    expect(onA5).toBeGreaterThan(onA4);
+  });
+
+  it('numbers every page against the whole document, whatever the sheet', () => {
+    const html = renderDocumentHtml(build({ lines: twentyLines, options: { page: PAGE_PRESETS.a5 } }));
+    const total = countPages(build({ lines: twentyLines, options: { page: PAGE_PRESETS.a5 } }));
+    expect(html).toContain(`Page 1 of ${total}`);
+    expect(html).toContain(`Page ${total} of ${total}`);
+  });
+
+  it('lays a custom sheet out at its own width and margins', () => {
+    const page = resolvePageGeometry({
+      sizeId: 'custom',
+      widthMm: 120,
+      heightMm: 200,
+      marginXMm: 6,
+      marginYMm: 5,
+    });
+    const html = renderDocumentHtml(build({ options: { page } }));
+    expect(html).toContain('@page { size: 120mm 200mm;');
+    expect(html).toContain('margin: 5mm 6mm;');
+    // The content box is the sheet less both margins.
+    expect(html).toContain('width: 108mm');
+    expect(html).toContain('min-height: 190mm');
+  });
+
+  it('re-clamps a stored geometry that would give pagination a negative height', () => {
+    // Not a hypothetical: the settings row and a hand-edited backup both reach here, and the row
+    // count is divided out of the content height.
+    const html = renderDocumentHtml(
+      build({
+        lines: twentyLines,
+        options: {
+          page: resolvePageGeometry({
+            sizeId: 'custom',
+            widthMm: 70,
+            heightMm: 100,
+            marginXMm: 40,
+            marginYMm: 40,
+          }),
+        },
+      }),
+    );
+    expect(html).toContain('Page 1 of');
+    expect(html).not.toContain('min-height: -');
+    expect(html).not.toContain('NaN');
+  });
+
+  it('scales the image export against the chosen width, not a fixed 210mm', () => {
+    const html = renderDocumentHtml(
+      build({ options: { page: PAGE_PRESETS.a5, pixelWidth: 1480 } }),
+    );
+    // A5 is 148mm wide, so 1480px is exactly 10px per millimetre — the page box lands on 1480px.
+    expect(html).toContain('width: 1480.00px');
   });
 });

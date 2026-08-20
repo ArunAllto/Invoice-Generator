@@ -22,6 +22,7 @@ import { ExportService } from '../../../export/export.service';
 import { countPages, renderDocumentHtml } from '../../../render/html';
 import { toRenderInput } from '../../../render/adapt';
 import { buildDocumentUpiQr } from '../../../render/upi-qr';
+import { RenderSettingsService } from '../../../render/render-settings.service';
 import { ToastService } from '../../../shared/ui/toast.service';
 
 /**
@@ -64,6 +65,7 @@ export class DocumentPreviewPage implements OnInit {
   private readonly repository = inject(DocumentsRepository);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
+  private readonly renderSettings = inject(RenderSettingsService);
   private readonly exports = inject(ExportService);
   private readonly sheets = inject(ActionSheetController);
 
@@ -106,9 +108,11 @@ export class DocumentPreviewPage implements OnInit {
     }
 
     const calc = this.repository.calculate(loaded.document, loaded.lines);
+    const prefs = await this.renderSettings.load();
     const input = toRenderInput(
       { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
       {
+        ...prefs,
         forScreen: true,
         upiQrSvg: buildDocumentUpiQr({
           document: loaded.document,

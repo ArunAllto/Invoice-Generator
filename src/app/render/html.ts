@@ -29,7 +29,21 @@
 import type { CalcResult, TaxSummaryRow } from '../core/calc';
 import { formatIsoDate, type DateDisplayStyle } from '../core/dates';
 import { formatBasisPoints, formatMilli, formatPaise } from '../core/money';
-import type { DocumentBlocks, DocumentType, Paise, TaxMode, TemplateId } from '../core/types';
+import {
+  A4_PAGE,
+  type DocumentBlocks,
+  type DocumentType,
+  type PageGeometry,
+  type Paise,
+  type TaxMode,
+  type TemplateId,
+} from '../core/types';
+import {
+  contentHeightMm,
+  contentWidthMm,
+  cssPageSize,
+  resolvePageGeometry,
+} from '../core/page-size';
 
 // ---------------------------------------------------------------------------
 // Input
@@ -111,6 +125,13 @@ export interface RenderOptions {
    * captures a predictable bitmap.
    */
   pixelWidth?: number | undefined;
+  /**
+   * The paper to lay the document out on (§10.1).
+   *
+   * Omitted means A4, which is what every document used before this was configurable — so an old
+   * backup, or any caller that does not care, keeps exactly the layout it had.
+   */
+  page?: PageGeometry | undefined;
   /** Screen preview mode: drops the print-only page shadows and centring. */
   forScreen?: boolean | undefined;
   /**
@@ -240,16 +261,15 @@ const METRICS: Readonly<Record<TemplateId, TemplateMetrics>> = {
   },
 };
 
-/** A4 with §10.1's margins: 210×297mm, 20mm sides, 16mm top and bottom. */
-const PAGE = {
-  widthMm: 210,
-  heightMm: 297,
-  marginXMm: 20,
-  marginYMm: 16,
-} as const;
-
-const CONTENT_HEIGHT_MM = PAGE.heightMm - PAGE.marginYMm * 2;
-const CONTENT_WIDTH_MM = PAGE.widthMm - PAGE.marginXMm * 2;
+/**
+ * The page geometry for a render, defaulting to §10.1's A4.
+ *
+ * Resolved rather than trusted: this is the read path for every document, and a stored geometry with
+ * margins wider than its own page would give pagination a negative content height to divide by.
+ */
+function pageOf(options: RenderOptions): PageGeometry {
+  return options.page ? resolvePageGeometry(options.page) : A4_PAGE;
+}
 
 /** Height reserved for the page footer strip on every page. */
 const FOOTER_MM = 10;
@@ -357,7 +377,9 @@ function paginate(input: RenderInput): Page[] {
 
   let current: Page = { rows: [], closing: false };
   let used = metrics.headerMm + metrics.tableHeadMm;
-  const available = CONTENT_HEIGHT_MM - FOOTER_MM;
+  // Derived from the chosen paper, which is the whole point of making it configurable: an A5 sheet
+  // has to fit fewer rows per page, and the row count is what decides that.
+  const available = contentHeightMm(pageOf(input.options)) - FOOTER_MM;
 
   for (const row of rows) {
     if (current.rows.length > 0 && used + row.heightMm > available) {
@@ -882,15 +904,17 @@ function sanitiseColor(value: string): string {
 
 function baseCss(metrics: TemplateMetrics, options: RenderOptions, accent: string): string {
   const pixelMode = typeof options.pixelWidth === 'number' && options.pixelWidth > 0;
-  // A4 is 210mm wide; scale millimetres to pixels for the image path (§10.4).
-  const scale = pixelMode ? (options.pixelWidth ?? 1240) / PAGE.widthMm : 1;
+  const page = pageOf(options);
+  // Scale millimetres to pixels for the image path (§10.4), against the *chosen* page width — a
+  // fixed 210 would squash a Letter page and stretch an A5 one.
+  const scale = pixelMode ? (options.pixelWidth ?? 1240) / page.widthMm : 1;
   const unit = (mm: number): string => (pixelMode ? `${(mm * scale).toFixed(2)}px` : `${mm}mm`);
   const fontSize = pixelMode
     ? `${((metrics.fontPt * 4 * scale) / 3 / 3.7795).toFixed(2)}px`
     : `${metrics.fontPt}pt`;
 
   return `
-@page { size: A4; margin: ${PAGE.marginYMm}mm ${PAGE.marginXMm}mm; }
+@page { size: ${cssPageSize(page)}; margin: ${page.marginYMm}mm ${page.marginXMm}mm; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -908,8 +932,8 @@ body {
 
 .page {
   position: relative;
-  width: ${unit(CONTENT_WIDTH_MM)};
-  min-height: ${unit(CONTENT_HEIGHT_MM)};
+  width: ${unit(contentWidthMm(page))};
+  min-height: ${unit(contentHeightMm(page))};
   margin: 0 auto;
   padding: 0;
   page-break-after: always;
@@ -925,8 +949,8 @@ body {
 body.screen { background: #EEF1F5; padding: ${unit(6)} 0; }
 body.screen .page {
   background: #FFFFFF;
-  padding: ${unit(PAGE.marginYMm)} ${unit(PAGE.marginXMm)};
-  width: ${unit(PAGE.widthMm)};
+  padding: ${unit(page.marginYMm)} ${unit(page.marginXMm)};
+  width: ${unit(page.widthMm)};
   margin: 0 auto ${unit(6)};
   box-shadow: 0 1px 6px rgba(15, 26, 42, 0.18);
 }

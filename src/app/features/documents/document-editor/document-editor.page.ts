@@ -85,6 +85,7 @@ import { ExportService } from '../../../export/export.service';
 import { renderDocumentHtml } from '../../../render/html';
 import { toRenderInput } from '../../../render/adapt';
 import { buildDocumentUpiQr } from '../../../render/upi-qr';
+import { RenderSettingsService } from '../../../render/render-settings.service';
 import { DocumentEditorStore } from '../document-editor.store';
 
 @Component({
@@ -128,6 +129,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
   private readonly masters = inject(MastersRepository);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly renderSettings = inject(RenderSettingsService);
   private readonly exports = inject(ExportService);
   private readonly sheets = inject(ActionSheetController);
   private readonly alerts = inject(AlertController);
@@ -768,6 +770,7 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     const input = toRenderInput(
       { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
       {
+        ...(await this.renderSettings.load()),
         upiQrSvg: buildDocumentUpiQr({
           document: loaded.document,
           balance: loaded.derived.balance,

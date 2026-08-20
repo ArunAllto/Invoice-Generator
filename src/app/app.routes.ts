@@ -123,6 +123,10 @@ export const routes: Routes = [
       import('./features/settings/custom-fields/custom-fields.page').then((m) => m.CustomFieldsPage),
   },
   {
+    path: 'settings/page-size',
+    loadComponent: () => import('./features/settings/page-size/page-size.page').then((m) => m.PageSizePage),
+  },
+  {
     path: 'settings/defaults',
     loadComponent: () => import('./features/settings/defaults/defaults.page').then((m) => m.DefaultsPage),
   },

@@ -185,6 +185,14 @@ export const SETTINGS_KEYS = {
    * the documents themselves, so "clearing" it must not touch them. Documents updated after this
    * moment reappear, which is what makes the action reversible and non-destructive.
    */
+  /**
+   * The paper documents are laid out on (§10.1), as JSON.
+   *
+   * A setting rather than a column on the document: paper size is a fact about the printer, not
+   * about the transaction, so §5.4's snapshot rule does not apply. No number on a document changes
+   * when it moves — only how many pages it takes.
+   */
+  pageGeometry: 'document.pageGeometry',
   recentClearedAt: 'dashboard.recentClearedAt',
 } as const;
 

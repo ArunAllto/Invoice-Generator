@@ -49,6 +49,7 @@ import {
 import { ExportService } from '../../../export/export.service';
 import { buildExportFilename } from '../../../export/filename';
 import { toRenderInput } from '../../../render/adapt';
+import { buildDocumentUpiQr } from '../../../render/upi-qr';
 import { renderDocumentHtml } from '../../../render/html';
 import { ToastService } from '../../../shared/ui/toast.service';
 import { IsoDatePipe } from '../../../shared/pipes/iso-date.pipe';
@@ -227,12 +228,16 @@ export class DocumentListPage implements OnInit, ViewWillEnter {
     }
     const calc = this.documents.calculate(loaded.document, loaded.lines);
     const html = renderDocumentHtml(
-      toRenderInput({
-        document: loaded.document,
-        lines: loaded.lines,
-        calc,
-        derived: loaded.derived,
-      }),
+      toRenderInput(
+        { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
+        {
+          upiQrSvg: buildDocumentUpiQr({
+            document: loaded.document,
+            balance: loaded.derived.balance,
+            grandTotal: calc.grandTotal,
+          }),
+        },
+      ),
     );
     const filename = buildExportFilename({
       type: loaded.document.type,

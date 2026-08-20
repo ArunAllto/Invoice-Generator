@@ -8,6 +8,7 @@
 import { Component, inject, signal, type OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  AlertController,
   IonBadge,
   IonButton,
   IonButtons,
@@ -16,6 +17,9 @@ import {
   IonIcon,
   IonItem,
   IonLabel,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
   IonList,
   IonNote,
   IonSearchbar,
@@ -26,9 +30,10 @@ import {
   type ViewWillEnter,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { addOutline } from 'ionicons/icons';
+import { addOutline, trashOutline } from 'ionicons/icons';
 
 import { MastersRepository, type Client } from '../../../data/repositories/masters.repository';
+import { ToastService } from '../../../shared/ui/toast.service';
 
 @Component({
   selector: 'app-client-list',
@@ -42,6 +47,9 @@ import { MastersRepository, type Client } from '../../../data/repositories/maste
     IonIcon,
     IonContent,
     IonSearchbar,
+    IonItemSliding,
+    IonItemOptions,
+    IonItemOption,
     IonList,
     IonItem,
     IonLabel,
@@ -56,6 +64,8 @@ import { MastersRepository, type Client } from '../../../data/repositories/maste
 export class ClientListPage implements OnInit, ViewWillEnter {
   private readonly masters = inject(MastersRepository);
   private readonly router = inject(Router);
+  private readonly alerts = inject(AlertController);
+  private readonly toast = inject(ToastService);
 
   readonly clients = signal<Client[]>([]);
   readonly loading = signal(true);
@@ -63,7 +73,7 @@ export class ClientListPage implements OnInit, ViewWillEnter {
   readonly includeArchived = signal(false);
 
   constructor() {
-    addIcons({ addOutline });
+    addIcons({ addOutline, trashOutline });
   }
 
   /**
@@ -119,5 +129,43 @@ export class ClientListPage implements OnInit, ViewWillEnter {
 
   add(): void {
     void this.router.navigate(['/client', 'new']);
+  }
+
+  /**
+   * Remove a client, or archive them if a document already uses them.
+   *
+   * §5.2: the repository decides which, because only it knows whether anything references them, so
+   * the confirmation explains the rule rather than promising an outcome it cannot know yet.
+   */
+  async removeClient(client: Client): Promise<void> {
+    const alert = await this.alerts.create({
+      header: `Remove ${client.company || client.name}?`,
+      message:
+        'If any document uses them they are archived instead — hidden from the pickers, with those ' +
+        'documents left exactly as they are.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Remove',
+          role: 'destructive',
+          handler: () => {
+            void this.confirmRemove(client);
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async confirmRemove(client: Client): Promise<void> {
+    try {
+      const outcome = await this.masters.deleteOrArchiveClient(client.id);
+      await this.reload();
+      this.toast.success(
+        outcome === 'archived' ? 'Archived — their documents are untouched.' : 'Removed.',
+      );
+    } catch (cause) {
+      this.toast.error(cause);
+    }
   }
 }

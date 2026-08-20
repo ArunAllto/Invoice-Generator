@@ -1,0 +1,82 @@
+<ion-content class="ion-padding">
+  @if (loading()) {
+    <div class="cd-centre"><ion-spinner name="dots" /></div>
+  } @else {
+    <div class="cd-hero">
+      <h1>CraftyDocs</h1>
+      <p>Quotations, invoices and receipts. Entirely on this device.</p>
+    </div>
+
+    <ion-note class="cd-note">
+      Just enough to put your name on a document. Everything else has a sensible default and its own
+      settings screen.
+    </ion-note>
+
+    <ion-list inset="true">
+      <ion-item>
+        <ion-input
+          label="Business name *"
+          labelPlacement="stacked"
+          autocapitalize="words"
+          [value]="profile()!.name"
+          (ionInput)="patch('name', $any($event.target).value)"
+          (ionBlur)="nameTouched.set(true)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="Phone"
+          labelPlacement="stacked"
+          inputmode="tel"
+          [value]="profile()!.phone"
+          (ionInput)="patch('phone', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="State"
+          labelPlacement="stacked"
+          [value]="profile()!.state"
+          (ionInput)="patch('state', $any($event.target).value)"
+        />
+      </ion-item>
+      <ion-item>
+        <ion-input
+          label="GSTIN"
+          labelPlacement="stacked"
+          autocapitalize="characters"
+          [value]="profile()!.gstin ?? ''"
+          (ionBlur)="patchGstin($any($event.target).value)"
+        />
+      </ion-item>
+    </ion-list>
+
+    @if (nameTouched() && nameMissing()) {
+      <ion-note color="danger" class="cd-note">
+        The name is the one thing with no sensible default — it is printed at the top of every
+        document.
+      </ion-note>
+    }
+    @if (gstinWarning()) {
+      <ion-note color="warning" class="cd-note">{{ gstinWarning() }}</ion-note>
+    }
+
+    <!-- §9.4: this field decides whether GST exists anywhere in the app, which is worth saying
+         before someone leaves it blank by accident. -->
+    <ion-note class="cd-note">
+      Leave the GSTIN blank if you are not registered and no GST field will appear anywhere. The
+      state decides CGST + SGST versus IGST when you are.
+    </ion-note>
+
+    <div class="cd-actions">
+      <ion-button expand="block" [disabled]="saving()" (click)="finish()">
+        {{ saving() ? 'Saving…' : 'Get started' }}
+      </ion-button>
+      <ion-button expand="block" fill="clear" (click)="skip()">Skip for now</ion-button>
+    </div>
+
+    <ion-note class="cd-note cd-centre-text">
+      No account, no server, no analytics. Nothing leaves this device unless you export it.
+    </ion-note>
+  }
+</ion-content>

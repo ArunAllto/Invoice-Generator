@@ -50,8 +50,11 @@ src/
 │   │
 │   ├── render/
 │   │   ├── html.ts               THE single source of document output (§10.1)
-│   │   └── adapt.ts              stored document → renderer input; type-only imports, so pure
-│   ├── export/filename.ts        export filename rules (§10.2)
+│   │   ├── adapt.ts              stored document → renderer input; type-only imports, so pure
+│   │   └── upi-qr.ts             the payment QR, shared by preview and every export path
+│   ├── export/
+│   │   ├── filename.ts           export filename rules (§10.2)
+│   │   └── export.service.ts     print, save-as-HTML, share (§10.2, §10.5)
 │   │
 │   ├── shared/
 │   │   ├── pipes/                one pipe per file
@@ -67,6 +70,7 @@ src/
 │   │
 │   ├── features/                 one folder per component, lazily routed
 │   │   ├── dashboard/            dashboard.page.{ts,html,scss}
+│   │   ├── onboarding/           first run: page, plus the route guard
 │   │   ├── documents/
 │   │   │   ├── document-list/    document-list.page.{ts,html,scss}
 │   │   │   ├── document-editor/  document-editor.page.{ts,html,scss}
@@ -220,6 +224,12 @@ and it needs the Android SDK and JDK 17 installed locally.
 | Logo, signature & template (§7.1, §7.2, §10.6) | Working: file picker to data URI with size and type limits, four templates |
 | Backup & restore (§13) | Working: JSON dump of all 11 tables, validated on the way in, restored in one transaction; plus erase-everything |
 | Document block toggles (§6.2) | Working: 15 toggles, each saying what it does and why it would have no effect; savable as the default for new documents |
+| Typed notifications | Success / warning / error / info, distinguished by icon and duration as well as colour — colour alone fails a colour-blind reader and washes out in sunlight |
+| Export and share (§10.2, §10.5) | Working: platform print dialogue (where "Save as PDF" lives), self-contained single-file HTML download, Web Share where the platform has it. From the editor, the preview, and by swiping a list row |
+| Deletion (§6.7) | Working: documents from the editor and by swiping a list row, clients by swiping; §6.4 refuses an issued receipt and offers cancellation instead |
+| Clearable Recent (§4.1) | Working: hides rows without deleting anything, reversible, and deliberately does not filter the outstanding totals |
+| Appearance | Working: theme, accent colour (light- and dark-ground variants each) and text size, all persisted and applied before first paint |
+| Onboarding (§14) | Working: four fields on first run, skippable, guarded so a restored backup does not re-run it |
 | **The document editor** (§6.2) | Working: live totals, §7.3 price badges and write-back prompt, 400 ms debounced autosave, status transitions, manual number override, client picker |
 | Payments and receipts (§6.5) | Working: record and delete payments, derived part-paid / paid, raise a receipt from a payment |
 | Status lifecycle (§6.4) | Working: buttons generated from the transition table, so cancel is offered wherever the domain allows it |
@@ -228,9 +238,8 @@ and it needs the Android SDK and JDK 17 installed locally.
 
 | Gap | Effect |
 |---|---|
-| File export (§10.2–10.5) | Preview renders the real document and the browser print dialogue produces a PDF, but writing a PDF, DOCX or PNG to a file, and sharing it, are not built. Needs `@capacitor/filesystem`, `@capacitor/share` and `docx`. |
-| Font embedding (§10.1) | The preview uses the platform font stack. A truly self-contained export needs an embedded `@font-face`; `RenderOptions.fontCss` is the seam it plugs into. |
-| Onboarding (§14) | No first-run walkthrough. The dashboard banner covers the one thing that matters — filling in the business profile. |
+| PDF / DOCX / PNG as a *file* (§10.3, §10.4) | The print dialogue produces a real PDF and the HTML export is self-contained, so the document can be delivered today. A generated PDF byte stream, a Word file, and one PNG per page each need a library — `pdf-lib`, `docx`, a canvas rasteriser — and `render/html.ts` already accepts `pixelWidth` and `onlyPage` for the image path. |
+| Font embedding (§10.1) | The export uses the platform font stack, so a machine without Noto Sans substitutes. `RenderOptions.fontCss` is the seam an embedded `@font-face` plugs into; it needs a licensed font file committed to the repo. |
 | Android build (§12) | Nothing has run on a device. `npm i @capacitor/android` then `npx cap add android`. |
 
 ### Dependencies

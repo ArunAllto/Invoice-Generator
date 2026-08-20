@@ -39,6 +39,8 @@
   } @else {
     <ion-list inset="true">
       @for (client of clients(); track client.id) {
+        <!-- Swipe to remove, matching the Documents tab. -->
+        <ion-item-sliding>
         <ion-item button="true" (click)="open(client.id)">
           <ion-label>
             <h3>{{ client.company || client.name }}</h3>
@@ -55,6 +57,12 @@
             }
           </div>
         </ion-item>
+        <ion-item-options side="end">
+          <ion-item-option color="danger" (click)="removeClient(client)">
+            <ion-icon slot="icon-only" name="trash-outline" />
+          </ion-item-option>
+        </ion-item-options>
+        </ion-item-sliding>
       }
     </ion-list>
   }

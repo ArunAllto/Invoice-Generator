@@ -84,6 +84,7 @@ import { buildExportFilename } from '../../../export/filename';
 import { ExportService } from '../../../export/export.service';
 import { renderDocumentHtml } from '../../../render/html';
 import { toRenderInput } from '../../../render/adapt';
+import { buildDocumentUpiQr } from '../../../render/upi-qr';
 import { DocumentEditorStore } from '../document-editor.store';
 
 @Component({
@@ -766,7 +767,13 @@ export class DocumentEditorPage implements OnInit, OnDestroy, ViewWillLeave {
     const calc = this.repository.calculate(loaded.document, loaded.lines);
     const input = toRenderInput(
       { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
-      { upiQrSvg: null },
+      {
+        upiQrSvg: buildDocumentUpiQr({
+          document: loaded.document,
+          balance: loaded.derived.balance,
+          grandTotal: calc.grandTotal,
+        }),
+      },
     );
     const filename = buildExportFilename({
       type: loaded.document.type,

@@ -15,9 +15,20 @@
 
 import type { Routes } from '@angular/router';
 
+import { onboardingGuard } from './features/onboarding/onboarding.guard';
+
 export const routes: Routes = [
+  /** First run (§14). Not guarded — this is where the guard sends people. */
+  {
+    path: 'onboarding',
+    loadComponent: () =>
+      import('./features/onboarding/onboarding.page').then((m) => m.OnboardingPage),
+  },
+
   {
     path: 'tabs',
+    // Guards the shell, not each tab, so a deep link to a document is not intercepted.
+    canActivate: [onboardingGuard],
     loadComponent: () => import('./tabs/tabs.page').then((m) => m.TabsPage),
     children: [
       {

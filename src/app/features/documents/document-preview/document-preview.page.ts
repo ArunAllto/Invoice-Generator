@@ -16,12 +16,12 @@ import {
 import { addIcons } from 'ionicons';
 import { shareOutline } from 'ionicons/icons';
 
-import { buildUpiQrSvg } from '../../../core/qr';
 import { DocumentsRepository, type FullDocument } from '../../../data/repositories/documents.repository';
 import { buildExportFilename } from '../../../export/filename';
 import { ExportService } from '../../../export/export.service';
 import { countPages, renderDocumentHtml } from '../../../render/html';
 import { toRenderInput } from '../../../render/adapt';
+import { buildDocumentUpiQr } from '../../../render/upi-qr';
 import { ToastService } from '../../../shared/ui/toast.service';
 
 /**
@@ -108,41 +108,20 @@ export class DocumentPreviewPage implements OnInit {
     const calc = this.repository.calculate(loaded.document, loaded.lines);
     const input = toRenderInput(
       { document: loaded.document, lines: loaded.lines, calc, derived: loaded.derived },
-      { forScreen: true, upiQrSvg: this.upiQr(loaded, calc.grandTotal) },
+      {
+        forScreen: true,
+        upiQrSvg: buildDocumentUpiQr({
+          document: loaded.document,
+          balance: loaded.derived.balance,
+          grandTotal: calc.grandTotal,
+        }),
+      },
     );
 
     this.loaded.set(loaded);
     this.pageCount.set(countPages(input));
     this.html.set(renderDocumentHtml(input));
     this.loading.set(false);
-  }
-
-  /**
-   * The UPI QR, when the document asks for one and there is a VPA to pay.
-   *
-   * Built here rather than in the adapter because encoding a QR is real work — a few thousand
-   * operations — and the adapter is called for every export variant, once per page. Handing it a
-   * finished SVG keeps that cost paid once.
-   */
-  private upiQr(loaded: FullDocument, grandTotal: number): string | null {
-    const { document: record } = loaded;
-    const vpa = record.businessSnapshot.upiId;
-    if (!record.blocks.upiQr || !vpa || vpa.trim().length === 0) return null;
-
-    try {
-      return buildUpiQrSvg({
-        vpa,
-        payeeName: record.businessSnapshot.name,
-        // Invoices ask for what is still owed; anything else encodes an open amount, since asking
-        // for the full total of a part-paid invoice would collect the money twice.
-        amountPaise: record.type === 'invoice' ? loaded.derived.balance || grandTotal : null,
-        note: record.number,
-      });
-    } catch {
-      // A QR that will not encode must not take the preview down with it. The document is still
-      // perfectly readable without the code.
-      return null;
-    }
   }
 
   /**

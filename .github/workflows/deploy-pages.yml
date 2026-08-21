@@ -48,13 +48,24 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # `GITHUB_REPOSITORY` is "owner/repo" and is set for every event type, so stripping the owner
+      # is more robust than `github.event.repository.name`, which depends on the event payload.
       - name: Build
-        run: npm run build -- --base-href "/${{ github.event.repository.name }}/"
+        run: npm run build -- --base-href "/${GITHUB_REPOSITORY#*/}/"
 
       - name: Prepare for static hosting
         run: node scripts/prepare-static-host.mjs
 
+      # `enablement: true` makes the action create the Pages site itself via the API, instead of
+      # failing with "Get Pages site failed ... Not Found" when nobody has flipped the setting by
+      # hand. It needs the `pages: write` permission above, which is already granted.
+      #
+      # It cannot work around a plan restriction: Pages for a *private* repository requires
+      # GitHub Pro, Team or Enterprise. On a free account the API refuses regardless, and the repo
+      # has to be made public instead.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
